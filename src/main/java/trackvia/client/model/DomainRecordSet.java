@@ -3,26 +3,27 @@ package trackvia.client.model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RecordSet {
+public class DomainRecordSet<T> {
     private List<FieldMetadata> structure;
-    private List<RecordData> data;
+    private List<T> data;
     private int totalCount;
 
-    public RecordSet() {}
+    public DomainRecordSet() {}
 
-    public RecordSet(final List<FieldMetadata> structure, final List<RecordData> data, final int totalCount) {
+    public DomainRecordSet(final List<FieldMetadata> structure, final List<T> data, final int totalCount) {
         this.structure = new ArrayList<FieldMetadata>();
         for (FieldMetadata fm : structure) {
             this.structure.add(new FieldMetadata(fm.getName(), fm.getType().type(), fm.getRequired(), fm.getUnique(),
                     fm.getChoices()));
         }
-        this.data = new ArrayList<RecordData>();
-        for (RecordData rd : data) {
-            this.data.add(new RecordData(rd));
+        this.data = new ArrayList<T>();
+        for (T rd : data) {
+            this.data.add(rd);
         }
         this.totalCount = totalCount;
     }
 
+    /*
     public RecordDataBatch asBatch() {
         RecordDataBatch batch = new RecordDataBatch();
         List<RecordData> rd = new ArrayList<RecordData>();
@@ -32,6 +33,7 @@ public class RecordSet {
 
         return batch;
     }
+    */
 
     public List<FieldMetadata> getStructure() {
         return structure;
@@ -41,11 +43,11 @@ public class RecordSet {
         this.structure = structure;
     }
 
-    public List<RecordData> getData() {
+    public List<T> getData() {
         return data;
     }
 
-    public void setData(List<RecordData> data) {
+    public void setData(List<T> data) {
         this.data = data;
     }
 

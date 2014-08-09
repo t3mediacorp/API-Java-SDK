@@ -33,16 +33,14 @@ public abstract class CommandOverHttpPut<T> implements OverHttpCommand<T> {
     public CommandOverHttpPut(final HttpClientContext context) {
         this.context = context;
         this.gson = new GsonBuilder()
-                .setDateFormat(getDateFormat())
+                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
                 .registerTypeAdapter(RecordData.class, new RecordDataDeserializer())
                 .create();
     }
 
     public abstract URI getApiRequestUri() throws URISyntaxException;
-    public abstract T processResponseEntity(final HttpEntity entity, final Gson gson) throws IOException;
-    public abstract HttpEntity getApiRequestEntity(final Gson gson) throws UnsupportedEncodingException;
-
-    public String getDateFormat() { return "yyyy-MM-dd'T'HH:mm:ss.SSSX"; }
+    public abstract T processResponseEntity(final HttpEntity entity) throws IOException;
+    public abstract HttpEntity getApiRequestEntity() throws UnsupportedEncodingException;
 
     @Override
     public HttpClientContext getContext() {
@@ -59,12 +57,12 @@ public abstract class CommandOverHttpPut<T> implements OverHttpCommand<T> {
         try {
             URI uri = getApiRequestUri();
             HttpPut request = new HttpPut(uri);
-            request.setEntity(getApiRequestEntity(this.gson));
+            request.setEntity(getApiRequestEntity());
 
             response = client.execute(request);
 
             if (ValidResponseCodes.contains(response.getStatusLine().getStatusCode())) {
-                result = processResponseEntity(response.getEntity(), gson);
+                result = processResponseEntity(response.getEntity());
 
                 LOG.debug("{} api response: {}", uri.getPath(), (result == null) ? ("none") : (result.toString()));
             } else {

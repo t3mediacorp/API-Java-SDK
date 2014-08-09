@@ -33,14 +33,12 @@ public abstract class CommandOverHttpDelete<T> implements OverHttpCommand <T> {
     public CommandOverHttpDelete(final HttpClientContext context) {
         this.context = context;
         this.gson = new GsonBuilder()
-                .setDateFormat(getDateFormat())
+                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
                 .registerTypeAdapter(RecordData.class, new RecordDataDeserializer())
                 .create();
     }
 
     public abstract URI getApiRequestUri() throws URISyntaxException;
-
-    public String getDateFormat() { return "yyyy-MM-dd'T'HH:mm:ss.SSSX"; }
 
     @Override
     public HttpClientContext getContext() {

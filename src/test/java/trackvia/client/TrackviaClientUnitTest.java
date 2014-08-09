@@ -159,6 +159,49 @@ public class TrackviaClientUnitTest {
     }
 
     @Test
+    public void testGetViewByName() throws Exception {
+        List<View> views = Arrays.asList(new View[]{
+                new View("1", "Default Contacts View", "Default Contacts View"),
+                new View("2", "Default Activities View", "Default Activities View")
+        });
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(views).getBytes());
+
+        // positive test
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        View viewResponse = client.getView("Default Contacts View");
+
+        Assert.assertNotNull(viewResponse);
+        Assert.assertEquals(views.get(0), viewResponse);
+
+        // negative test
+        when(responseEntity.getContent()).thenReturn(new ByteArrayInputStream("".getBytes()));
+
+        viewResponse = client.getView("does not exist");
+
+        Assert.assertNull(viewResponse);
+    }
+
+    @Test
+    public void testGetRecordsAsDomainClass() throws Exception {
+        RecordSet rs = Unit.getUnitTestRecordSet3();
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(rs).getBytes());
+
+        // form a valid http response with the expected json response body
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        DomainRecordSet<Unit.Contact> responseRs = client.getRecords(Unit.Contact.class, 1);
+
+        Assert.assertNotNull(responseRs);
+        Assert.assertEquals(1, responseRs.getTotalCount());
+        Assert.assertEquals(1, responseRs.getData().size());
+    }
+
+    @Test
     public void testGetRecords() throws Exception {
         // Create mocked data
         RecordSet rs = Unit.getUnitTestRecordSet1();
@@ -181,6 +224,22 @@ public class TrackviaClientUnitTest {
 
             Assert.assertEquals(rd1, rd2);
         }
+    }
+
+    @Test
+    public void testGetRecordAsDomainClass() throws Exception {
+        Record record = Unit.getUnitTestRecord1();
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(record).getBytes());
+
+        // Form a valid http response with the expected json response body
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        DomainRecord<Unit.Contact> contactRecord = client.getRecord(Unit.Contact.class, 1, 1);
+
+        Assert.assertNotNull(contactRecord);
+        Assert.assertNotNull(contactRecord.getData());
     }
 
     @Test
@@ -224,6 +283,22 @@ public class TrackviaClientUnitTest {
     }
 
     @Test
+    public void testFindRecordsAsDomainClass() throws Exception {
+        RecordSet rs = Unit.getUnitTestRecordSet3();
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(rs).getBytes());
+
+        // form a valid http response with the expected json response body
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        List<Unit.Contact> contacts = client.findRecords(Unit.Contact.class, 1, "1", 0, 25);
+
+        Assert.assertNotNull(contacts);
+        Assert.assertEquals(1, contacts.size());
+    }
+
+    @Test
     public void testGetUsers() throws Exception {
         UserRecordSet userRecordSet = Unit.getUnitTestUserRecordSet1();
         ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
@@ -258,6 +333,27 @@ public class TrackviaClientUnitTest {
     }
 
     @Test
+    public void testCreateRecordBatchAsDomainClass() throws Exception {
+        Record rawRecord = TestData.Unit.getUnitTestRecord1();
+        Unit.Contact contact = TestData.Unit.getUnitTestContact1();
+        List<Unit.Contact> contacts = Arrays.asList(new Unit.Contact[]{contact});
+        DomainRecordSet<Unit.Contact> rs = new DomainRecordSet<Unit.Contact>(
+                rawRecord.getStructure(), contacts, 1);
+        DomainRecordDataBatch<Unit.Contact> batch = new DomainRecordDataBatch<>(contacts);
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(rs).getBytes());
+
+        // form a valid http response with the expected json response body
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_CREATED);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        DomainRecordSet<Unit.Contact> responseRs = client.createRecords(1, batch);
+
+        Assert.assertNotNull(responseRs);
+        Assert.assertEquals(1, responseRs.getTotalCount());
+    }
+
+    @Test
     public void testCreateRecordBatch() throws Exception {
         RecordSet rs = Unit.getUnitTestRecordSet1();
         RecordDataBatch batch = new RecordDataBatch(rs.getData());
@@ -283,6 +379,24 @@ public class TrackviaClientUnitTest {
     }
 
     @Test
+    public void testUpdateRecordAsDomainClass() throws Exception {
+        RecordSet rs = TestData.Unit.getUnitTestRecordSet3();
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(rs).getBytes());
+
+        // Form a valid http response with the expected json response body
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        Unit.Contact contact = Unit.getUnitTestContact1();
+
+        DomainRecord<Unit.Contact> responseRecord = client.updateRecord(1, 1, contact);
+
+        Assert.assertNotNull(responseRecord);
+        Assert.assertEquals(contact.getId(), responseRecord.getData().getId());
+    }
+
+    @Test
     public void testUpdateRecord() throws Exception {
         RecordSet rs = Unit.getUnitTestRecordSet2();
         ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
@@ -305,6 +419,36 @@ public class TrackviaClientUnitTest {
 
         // no exception indicates success
         client.deleteRecord(1, 1);
+    }
+
+    @Test
+    public void testAddFileUsingDomainClass() throws Exception {
+        Path filePath = null;
+
+        try {
+            // create a temporary text file for upload
+            filePath = Files.createTempFile("trackvia-client-file", "");
+            Files.write(filePath, "This is only a test".getBytes());
+
+            Record record = Unit.getUnitTestRecord1();
+            ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                    gson.toJson(record).getBytes());
+
+            // Form a valid http response with the expected json response body
+            when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+            when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+            DomainRecord<Unit.Contact> recordResponse = client.addFile(Unit.Contact.class, 1, 1, "Test File",
+                    Paths.get("/path/to/file"));
+
+            Unit.Contact contact = Unit.getUnitTestContact1();
+
+            Assert.assertNotNull(recordResponse);
+            Assert.assertEquals(contact.getId(), recordResponse.getData().getId());
+
+        } finally {
+            if (filePath != null && Files.exists(filePath)) Files.delete(filePath);
+        }
     }
 
     @Test

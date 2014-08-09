@@ -51,7 +51,7 @@ public class RecordDataDeserializer implements JsonDeserializer<RecordData> {
         String stringValue = jsonPrimitive.getAsString();
         Object result;
 
-        // gson converts all numbers to double type.  differentiate
+        // By default, Gson converts all numbers to double type.  Differentiate
         // between integer and decimal numbers.
         if (jsonPrimitive.isNumber()) {
             try {

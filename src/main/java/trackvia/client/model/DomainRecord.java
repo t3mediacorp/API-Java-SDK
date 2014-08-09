@@ -4,19 +4,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class Record {
+public class DomainRecord<T> {
     private List<FieldMetadata> structure;
-    private RecordData data;
+    private T data;
 
-    public Record() {}
+    public DomainRecord() {}
 
-    public Record(final List<FieldMetadata> structure, final RecordData data) {
+    public DomainRecord(final List<FieldMetadata> structure, final T data) {
         this.structure = structure;
         this.data = data;
-    }
-
-    public Record(final RecordData data) {
-        this.data = new RecordData(data);
     }
 
     public List<FieldMetadata> getStructure() {
@@ -27,24 +23,20 @@ public class Record {
         this.structure = structure;
     }
 
-    public RecordData getData() {
+    public T getData() {
         return data;
     }
 
-    public void setData(RecordData data) {
+    public void setData(T data) {
         this.data = data;
     }
-
-    public long getRecordId() { return (this.data != null) ? (this.data.getRecordId()) : (null); }
 
     @Override
     public boolean equals(Object o) {
         if (o == null) return false;
-        if (!(o instanceof Record)) return false;
+        if (!(o instanceof DomainRecord)) return false;
 
-        Record otherRecord = (Record) o;
-
-        if (otherRecord.getRecordId() != getRecordId()) return false;
+        DomainRecord<T> otherRecord = (DomainRecord<T>) o;
 
         // Ensure both records have the same set of fields.  Having to do this isn't strictly
         // necessary to ensure equality.
@@ -58,24 +50,16 @@ public class Record {
         }
         if (!fieldNames1.equals(fieldNames2)) return false;
 
-        // Ensure all fields have the same value.
-        for (FieldMetadata fm : this.structure) {
-            String name = fm.getName();
-            Object v1 = this.data.get(name);
-            Object v2 = otherRecord.getData().get(name);
-
-            if ((v1 == null || v2 == null) && (v1 != v2)) return false;
-            if (!v1.equals(v2)) return false;
-        }
-
-        return true;
+        // Finally, delegate equality of data to the domain-class implementation.
+        return getData().equals(otherRecord.getData());
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + (int) getRecordId();
+        result = prime * result + (int) getData().hashCode();
+
         return result;
     }
 }

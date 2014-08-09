@@ -30,15 +30,13 @@ public abstract class CommandOverHttpGet<T> implements OverHttpCommand <T> {
     public CommandOverHttpGet(final HttpClientContext context) {
         this.context = context;
         this.gson = new GsonBuilder()
-                .setDateFormat(getDateFormat())
+                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
                 .registerTypeAdapter(RecordData.class, new RecordDataDeserializer())
                 .create();
     }
 
     public abstract URI getApiRequestUri() throws URISyntaxException;
-    public abstract T processResponseEntity(final HttpEntity entity, final Gson gson) throws IOException;
-
-    public String getDateFormat() { return "yyyy-MM-dd'T'HH:mm:ss.SSSX"; }
+    public abstract T processResponseEntity(final HttpEntity entity) throws IOException;
 
     @Override
     public HttpClientContext getContext() {
@@ -57,7 +55,7 @@ public abstract class CommandOverHttpGet<T> implements OverHttpCommand <T> {
             HttpGet request = new HttpGet(uri);
             response = client.execute(request);
             if (ValidResponseCodes.contains(response.getStatusLine().getStatusCode())) {
-                result = processResponseEntity(response.getEntity(), gson);
+                result = processResponseEntity(response.getEntity());
 
                 LOG.debug("{} api response: {}", uri.getPath(), (result == null) ? ("none") : (result.toString()));
             } else {
