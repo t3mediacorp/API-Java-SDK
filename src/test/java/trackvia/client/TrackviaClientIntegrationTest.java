@@ -22,9 +22,8 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testAuthorized() throws Exception {
+        // throws TrackviaApiException if access is not granted
         TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
-
-        Assert.assertNotNull(client);
     }
 
     @Test
@@ -160,9 +159,10 @@ public class TrackviaClientIntegrationTest {
         RecordData recordData = rs.getData().get(0);
 
         // change a field and update
+        long id = recordData.getRecordId();
         RecordData updatedData = new RecordData(recordData);
         updatedData.put(Integration.COLUMN_FIRST_NAME, UUID.randomUUID().toString());
-        Record updatedRecord = client.updateRecord(TEST_VIEW_ID, updatedData);
+        Record updatedRecord = client.updateRecord(TEST_VIEW_ID, id, updatedData);
 
         Assert.assertNotNull(updatedRecord);
         Assert.assertEquals(updatedRecord.getData().get(Integration.COLUMN_FIRST_NAME),

@@ -86,10 +86,12 @@ public class TrackviaClientUnitTest {
         when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
         when(responseEntity.getContent()).thenReturn(contentInputStream);
 
-        OAuth2Token tokenResponse = client.authorize("dontcare", "dontcare");
+        try {
+            client.authorize("dontcare", "dontcare");
 
-        Assert.assertNotNull(tokenResponse);
-        Assert.assertEquals(token, tokenResponse);
+        } catch (TrackviaApiException e) {
+            Assert.fail(String.format("authorize() threw an exception: %s", e.getApiError().description()));
+        }
 
     }
 
@@ -255,7 +257,7 @@ public class TrackviaClientUnitTest {
         Record recordResponse = client.getRecord(1, 1);
 
         Assert.assertNotNull(recordResponse);
-        Assert.assertEquals(record, recordResponse);
+        Assert.assertEquals(record.getRecordId(), recordResponse.getRecordId());
     }
 
     @Test
@@ -292,7 +294,9 @@ public class TrackviaClientUnitTest {
         when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
         when(responseEntity.getContent()).thenReturn(contentInputStream);
 
-        List<Unit.Contact> contacts = client.findRecords(Unit.Contact.class, 1, "1", 0, 25);
+        DomainRecordSet<Unit.Contact> responseRs = client.findRecords(Unit.Contact.class, 1, "1", 0, 25);
+
+        List<Unit.Contact> contacts = responseRs.getData();
 
         Assert.assertNotNull(contacts);
         Assert.assertEquals(1, contacts.size());
@@ -339,7 +343,6 @@ public class TrackviaClientUnitTest {
         List<Unit.Contact> contacts = Arrays.asList(new Unit.Contact[]{contact});
         DomainRecordSet<Unit.Contact> rs = new DomainRecordSet<Unit.Contact>(
                 rawRecord.getStructure(), contacts, 1);
-        DomainRecordDataBatch<Unit.Contact> batch = new DomainRecordDataBatch<>(contacts);
         ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
                 gson.toJson(rs).getBytes());
 
@@ -347,6 +350,7 @@ public class TrackviaClientUnitTest {
         when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_CREATED);
         when(responseEntity.getContent()).thenReturn(contentInputStream);
 
+        DomainRecordDataBatch<Unit.Contact> batch = new DomainRecordDataBatch<>(contacts);
         DomainRecordSet<Unit.Contact> responseRs = client.createRecords(1, batch);
 
         Assert.assertNotNull(responseRs);
@@ -406,7 +410,7 @@ public class TrackviaClientUnitTest {
         when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
         when(responseEntity.getContent()).thenReturn(contentInputStream);
 
-        Record updateResponse = client.updateRecord(1, rs.getData().get(0));
+        Record updateResponse = client.updateRecord(1, 1, rs.getData().get(0));
 
         Assert.assertNotNull(updateResponse);
         Assert.assertEquals(rs.getData().get(0), updateResponse.getData());
@@ -471,7 +475,7 @@ public class TrackviaClientUnitTest {
             Record recordResponse = client.addFile(1, 1, "Test File", Paths.get("/path/to/file"));
 
             Assert.assertNotNull(recordResponse);
-            Assert.assertEquals(record, recordResponse);
+            Assert.assertEquals(record.getRecordId(), recordResponse.getRecordId());
 
         } finally {
             if (filePath != null && Files.exists(filePath)) Files.delete(filePath);

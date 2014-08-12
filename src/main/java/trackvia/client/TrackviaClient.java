@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.FileBody;
+import org.omg.Dynamic.Parameter;
 import trackvia.client.model.*;
 import org.apache.http.HttpClientConnection;
 import org.apache.http.HttpEntity;
@@ -156,7 +157,7 @@ import java.util.concurrent.TimeUnit;
  * </pre>
  *
  * <i>Important: the client will not deserialize or serialize nested objects.  For Trackvia tables that reference
- * other tables, your application code will handle these "foreign key" references as additional retrieval of the
+ * other tables, your application code will handle these "foreign key" references as an additional retrieval of the
  * referenced table data.</i>
  *
  * When it comes to serialization, consider these Java/Trackvia type mappings:
@@ -270,11 +271,36 @@ public class TrackviaClient {
 
     private TrackviaClient() {}
 
+    /**
+     * Creates a client, with which to access the Trackvia API.
+     *
+     * Defaults to the HTTPS protocol scheme and port 80.  These can be
+     * overridden using a different constructor.
+     *
+     * @see #create(String, String, int, String, String)
+     *
+     * @param hostname host of the service api endpoint
+     * @param username name of an account user with access to targeted views and forms
+     * @param password password of the account user
+     * @return a client acting on behalf of an authenticated user
+     * @throws TrackviaApiException if authentication fails for whatever reason
+     */
     public static TrackviaClient create(final String hostname, final String username, final String password)
             throws TrackviaApiException {
         return create(DEFAULT_SCHEME, hostname, DEFAULT_PORT, username, password);
     }
 
+    /**
+     * Creates a client, with which to access the Trackvia API.
+     *
+     * @param scheme one of the supported protocol schemes (http or https)
+     * @param hostname host of the service api endpoint
+     * @param port port of the service endpoint (default: 80)
+     * @param username name of an account user with access to targeted views and forms
+     * @param password password of the account user
+     * @return a client acting on behalf of an authenticated user
+     * @throws TrackviaApiException if authentication fails for whatever reason
+     */
     public static TrackviaClient create(final String scheme, final String hostname, final int port,
                                         final String username, final String password)
             throws TrackviaApiException {
@@ -291,7 +317,7 @@ public class TrackviaClient {
 
         // Obtain user credentials to use the API.  authorize() throws TrackviaApiException if the
         // authorization process fails for any reason.  Let it propagate.
-        OAuth2Token token = trackviaClient.authorize(username, password);
+        trackviaClient.authorize(username, password);
 
         return trackviaClient;
     }
@@ -317,6 +343,10 @@ public class TrackviaClient {
         return trackviaClient;
     }
 
+    /**
+     * Gracefully shuts down connection management, allowing work on open connections
+     * to finish and disallowing new connections.
+     */
     public void shutdown() {
         this.connectionManager.shutdown();
     }
@@ -326,7 +356,7 @@ public class TrackviaClient {
         SSLConnectionSocketFactory sslsf = SSLConnectionSocketFactory.getSocketFactory();
         Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
                 .register("http", plainsf)
-                .register("https", sslsf)
+                .register(this.scheme, sslsf)
                 .build();
         this.connectionManager = new PoolingHttpClientConnectionManager(registry);
         this.httpClient = HttpClients.custom()
@@ -334,21 +364,61 @@ public class TrackviaClient {
                 .build();
     }
 
-    protected <T> Gson lookupGsonForDomainClass(final Class<T> domainClass, final Class<?> parameterClass) {
-        String key = String.format("%s-%s", domainClass.getName(), parameterClass.getName());
+    protected <T> Gson lookupSerializer(final Class<T> domainClass, final ParameterizedType parameterClass) {
+        String key = String.format("%s-%s", domainClass.getName(), parameterClass.getRawType().toString());
         Gson gson = typeToGsonMap.get(key);
+
         if (gson == null) {
+            Object serializer = null;
+            if (parameterClass.getRawType() == DomainRecordDataBatch.class) {
+                serializer = new DomainRecordDataBatchSerializer<>(domainClass);
+            } else {
+                throw new IllegalArgumentException(String.format(
+                        "No serializer available for type %s<%s>", parameterClass.getRawType().toString(),
+                        domainClass.getName()));
+            }
+
             gson = new GsonBuilder()
                     .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
-                    .registerTypeAdapter(parameterClass, new DomainRecordSetDeserializer<>(domainClass))
+                    .registerTypeAdapter(parameterClass.getRawType(), serializer)
                     .create();
+
             typeToGsonMap.put(key, gson);
         }
+
+        return gson;
+    }
+
+    protected <T> Gson lookupDeserializer(final Class<T> domainClass, final ParameterizedType parameterClass) {
+        String key = String.format("%s-%s", domainClass.getName(), parameterClass.getRawType().toString());
+        Gson gson = typeToGsonMap.get(key);
+
+        if (gson == null) {
+            Object deserializer = null;
+            if (parameterClass.getRawType() == DomainRecordSet.class) {
+                deserializer = new DomainRecordSetDeserializer<>(domainClass);
+            } else if (parameterClass.getRawType() == DomainRecord.class) {
+                deserializer = new DomainRecordDeserializer<>(domainClass);
+            } else {
+                throw new IllegalArgumentException(String.format(
+                        "No deserializer available for type %s<%s>", parameterClass.getRawType().toString(),
+                        domainClass.getName()));
+            }
+
+
+            gson = new GsonBuilder()
+                    .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
+                    .registerTypeAdapter(parameterClass, deserializer)
+                    .create();
+
+            typeToGsonMap.put(key, gson);
+        }
+
         return gson;
     }
 
     protected Object execute(OverHttpCommand command) {
-        HttpRoute route = new HttpRoute(new HttpHost(TrackviaClient.this.hostname, 80));
+        HttpRoute route = new HttpRoute(new HttpHost(TrackviaClient.this.hostname, this.port));
         ConnectionRequest cr = this.connectionManager.requestConnection(route, null);
         HttpClientConnection connection = null;
         Object apiResponse = null;
@@ -386,14 +456,29 @@ public class TrackviaClient {
         return (this.lastGoodToken != null) ? (this.lastGoodToken.getRefreshToken().getValue()) : (null);
     }
 
-    public OAuth2Token refreshAccessToken() throws TrackviaApiException {
+    /**
+     * Force refresh of the last known good token, using the refresh token provided
+     * by the service for that token.
+     *
+     * The client will automatically try to refresh the access token if it encounters
+     * an ApiError.InvalidToken error on any service call.  Should this fail, that error
+     * will be rethrown.  Catching it will provide an empty to handle authentication outside
+     * of the client.  The advantage of refreshAccessToken is it is faster than calling
+     * authorize().
+     *
+     * @see #authorize(String, String) to obtain another access and refresh token
+     *
+     * @throws TrackviaApiException if token refresh fails
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     */
+    public void refreshAccessToken() throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final HttpClientContext context = HttpClientContext.create();
         final OAuth2Token token = (OAuth2Token) execute(new CommandOverHttpGet<OAuth2Token>(context) {
             @Override
             public URI getApiRequestUri() throws URISyntaxException {
                 return new URIBuilder()
-                        .setScheme("https")
+                        .setScheme(TrackviaClient.this.scheme)
                         .setHost(TrackviaClient.this.hostname)
                         .setPath("/oauth/token")
                         .setParameter("refresh_token", getRefreshToken())
@@ -412,18 +497,27 @@ public class TrackviaClient {
         });
 
         setAuthToken(token);
-
-        return token;
     }
 
-    public OAuth2Token authorize(final String username, final String password) throws TrackviaApiException {
+    /**
+     * Authorizes the client for access to views and forms of a given account user.
+     *
+     * A side effect of a successful authentication try is the client saves the resulting
+     * access and refresh token, caching it for future client calls.
+     *
+     * @param username name of the account user
+     * @param password password of the account user
+     * @throws TrackviaApiException if the authentication try fails for whatever reason
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     */
+    public void authorize(final String username, final String password) throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         HttpClientContext context = HttpClientContext.create();
         OAuth2Token token = (OAuth2Token) execute(new CommandOverHttpGet<OAuth2Token>(context) {
             @Override
             public URI getApiRequestUri() throws URISyntaxException {
                 return new URIBuilder()
-                        .setScheme("https")
+                        .setScheme(TrackviaClient.this.scheme)
                         .setHost(TrackviaClient.this.hostname)
                         .setPath("/oauth/token")
                         .setParameter("username", username)
@@ -442,14 +536,18 @@ public class TrackviaClient {
         });
 
         setAuthToken(token);
-
-        return token;
     }
 
     /**
-     * Get all users.
+     * Gets account users available to the authenticated user.
+     *
+     * @param start the index (0 based) of the first user record, useful for paging
+     * @param max retrieve no more than this many user records
+     * @return a list of available users, observing the start and max constraints
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
      */
-    public List<User> getUsers(final int start, final int max) throws TrackviaApiException {
+    public List<User> getUsers(final int start, final int max) throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         Authorized<UserRecordSet> action = new Authorized<>(this);
         UserRecordSet rs = action.execute(new Callable<UserRecordSet>() {
@@ -472,7 +570,7 @@ public class TrackviaClient {
                             }
                         });
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath("/openapi/users")
                                 .setParameters(params)
@@ -522,9 +620,18 @@ public class TrackviaClient {
     }
 
     /**
-     * Create a user.
+     * Creates a new account user.  The user's initial state starts with email confirmation.
+     *
+     * @param email email address of the user
+     * @param firstName first name of the user
+     * @param lastName last name of the user
+     * @param timeZone abbreviated time zone where the user observes time
+     * @return the new user
+     * @throws TrackviaApiException if the service fails to process the request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
      */
-    public User createUser(final String email, final String firstName, final String lastName, final TimeZone timeZone) {
+    public User createUser(final String email, final String firstName, final String lastName, final TimeZone timeZone)
+            throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<UserRecord> action = new Authorized<>(this);
         final UserRecord userRecord = action.execute(new Callable<UserRecord>() {
@@ -536,7 +643,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath("/openapi/users")
                                 .setParameter("access_token", getAccessToken())
@@ -568,9 +675,13 @@ public class TrackviaClient {
     }
 
     /**
-     * Get a user's authorized apps.
+     * Gets the applications available to the authenticated user.
+     *
+     * @return list of applications, which may be empty if none are available
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
      */
-    public List<App> getApps() throws TrackviaApiException {
+    public List<App> getApps() throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<List<App>> action = new Authorized<>(this);
 
@@ -583,7 +694,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath("/openapi/apps")
                                 .setParameter("access_token", getAccessToken())
@@ -604,28 +715,35 @@ public class TrackviaClient {
     }
 
     /**
-     * Gets an authorized view.
+     * Gets a view by its name, if available to the authenticated user.
      *
      * @param name the case-sensitive view name to get
-     * @return the view or null if it's not found
+     * @return the view or null if not found
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #getViews() to get all available views
      */
-    public View getView(final String name) throws TrackviaApiException {
+    public View getView(final String name) throws TrackviaApiException, TrackviaClientException {
         List<View> views = getViews(null);
+
         return (views == null || views.isEmpty()) ? (null) : (views.get(0));
     }
 
     /**
-     * Gets all authorized views.
+     * Gets views available to the authenticated user.
      *
-     * @return a list of all views
-     * @see View
-     * @see #getView(String)
+     * @return a list of views, which may be empty if none are available
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #getView(String) to get a view by its name
      */
     public List<View> getViews() throws TrackviaApiException {
         return getViews(null);
     }
 
-    protected List<View> getViews(final String optionalName) throws TrackviaApiException {
+    protected List<View> getViews(final String optionalName) throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<List<View>> action = new Authorized<>(this);
 
@@ -640,7 +758,7 @@ public class TrackviaClient {
                         final String path = (optionalName == null || optionalName.isEmpty()) ? ("/openapi/views") :
                                 (String.format("/openapi/views?name=%s", optionalName));
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(path)
                                 .setParameter("access_token", getAccessToken())
@@ -650,7 +768,8 @@ public class TrackviaClient {
                     @Override
                     public List<View> processResponseEntity(final HttpEntity entity) throws IOException {
                         Reader jsonReader = new InputStreamReader(entity.getContent());
-                        Type responseType = new TypeToken<List<View>>() {}.getType();
+                        Type responseType = new TypeToken<List<View>>() {
+                        }.getType();
 
                         return gson.fromJson(jsonReader, responseType);
                     }
@@ -659,11 +778,43 @@ public class TrackviaClient {
         });
     }
 
-    // Not so pretty but type erasure forces some not-so-"classy" acts.
-    public <T> List<T> findRecords(final Class<T> domainClass, final int viewId, final String q,
-            final int start, final int max) throws TrackviaApiException {
+    /**
+     * Finds record matching given search criteria, returning application objects.
+     *
+     * A fairly simple name-matching strategy is used, to map the record's field values to
+     * the given application's domain class.  The domain class must observe the Java Bean
+     * setter/getter naming standard.  The matcher maps a Trackvia field (column) name to
+     * the setXXX (XXX part) of the setter name, ignoring case.
+     *
+     * The mapping strategy is not configurable.
+     *
+     * For example:
+     *
+     * Trackvia column name             Domain class getter name
+     * ----------------------------------------------------------
+     * FIRSTNAME                        getFirstName
+     *
+     * The string "FirstNme" is extracted from the getFirstName method  name, and
+     * equals the "FIRSTNAME" Trackvia column name.  Because the comparison is case
+     * insensitive, the matcher considers these two as a successful match.
+     *
+     * @param domainClass return instances of this type (instead of as raw {@link RecordData}
+     * @param viewId view identifier in which to search for records
+     * @param q query substring used for a substring match against all of the user-defined fields
+     * @param start the index (0 based) of the first user record, useful for paging
+     * @param max retrieve no more than this many user records
+     * @param <T> parameterized type matching the domainClass
+     * @return a list of application objects matching the search criteria, which may be empty
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #findRecords(int, String, int, int) for Map<String, Object> records
+     * @see trackvia.client.model.RecordData
+     */
+    public <T> DomainRecordSet<T> findRecords(final Class<T> domainClass, final int viewId, final String q,
+            final int start, final int max) throws TrackviaApiException, TrackviaClientException {
         final ParameterizedType returnType = new DomainRecordSetType<T>(domainClass);
-        final Gson domainGson = lookupGsonForDomainClass(domainClass, DomainRecordSetType.class);
+        final Gson deserializer = lookupDeserializer(domainClass, returnType);
         final Authorized<DomainRecordSet<T>> action = new Authorized<>(this);
         final DomainRecordSet<T> rs = action.execute(new Callable<DomainRecordSet<T>>() {
             @Override
@@ -674,11 +825,18 @@ public class TrackviaClient {
                     public URI getApiRequestUri() throws URISyntaxException {
                         List<NameValuePair> params = pairsFromFindRecordParams(q, start, max);
                         params.add(new NameValuePair() {
-                            @Override public String getName() { return "access_token"; }
-                            @Override public String getValue() { return getAccessToken(); }
+                            @Override
+                            public String getName() {
+                                return "access_token";
+                            }
+
+                            @Override
+                            public String getValue() {
+                                return getAccessToken();
+                            }
                         });
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/find", viewId))
                                 .setParameters(params)
@@ -689,19 +847,33 @@ public class TrackviaClient {
                     public DomainRecordSet<T> processResponseEntity(final HttpEntity entity) throws IOException {
                         Reader jsonReader = new InputStreamReader(entity.getContent());
 
-                        return domainGson.fromJson(jsonReader, returnType);
+                        return deserializer.fromJson(jsonReader, returnType);
                     }
                 });
             }
         });
 
-        return rs.getData();
+        return rs;
     }
 
     /**
-     * Find matching records in a given view.
+     *
+     * Finds record matching given search criteria, returning native records.
+     *
+     * @see trackvia.client.model.RecordDataDeserializer
+     *
+     * @param viewId view identifier in which to search for records
+     * @param q query substring used for a substring match against all of the user-defined fields
+     * @param start the index (0 based) of the first user record, useful for paging
+     * @param max retrieve no more than this many user records
+     * @return a list of application objects matching the search criteria, which may be empty
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #findRecords(Class, int, String, int, int) to specify an application class as the return type
      */
-    public RecordSet findRecords(final int viewId, final String q, final int start, final int max) throws TrackviaApiException {
+    public RecordSet findRecords(final int viewId, final String q, final int start, final int max)
+            throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<RecordSet> action = new Authorized<>(this);
 
@@ -714,11 +886,18 @@ public class TrackviaClient {
                     public URI getApiRequestUri() throws URISyntaxException {
                         List<NameValuePair> params = pairsFromFindRecordParams(q, start, max);
                         params.add(new NameValuePair() {
-                            @Override public String getName() { return "access_token"; }
-                            @Override public String getValue() { return getAccessToken(); }
+                            @Override
+                            public String getName() {
+                                return "access_token";
+                            }
+
+                            @Override
+                            public String getValue() {
+                                return getAccessToken();
+                            }
                         });
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/find", viewId))
                                 .setParameters(params)
@@ -757,9 +936,25 @@ public class TrackviaClient {
         return pairs;
     }
 
-    public <T> DomainRecordSet<T> getRecords(final Class<T> domainClass, final int viewId) throws TrackviaApiException {
+    /**
+     * Gets records available to the authenticated user in the given view.
+     *
+     * Use with small tables, when all records can be reasonably transferred in a single call.
+     *
+     * @param domainClass return instances of this type (instead of a raw record Map<String, Object>)
+     * @param viewId view identifier in which to get records
+     * @param <T> parameterized type matching the domainClass parameter
+     * @return both field metadata and record data, as a record set
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #getRecords(int) for Map<String, Object> records (@see trackvia.client.model.RecordData)
+     *
+     */
+    public <T> DomainRecordSet<T> getRecords(final Class<T> domainClass, final int viewId)
+            throws TrackviaApiException, TrackviaClientException {
         final ParameterizedType returnType = new DomainRecordSetType<T>(domainClass);
-        final Gson domainGson = lookupGsonForDomainClass(domainClass, DomainRecordSetType.class);
+        final Gson deserializer = lookupDeserializer(domainClass, returnType);
         final Authorized<DomainRecordSet<T>> action = new Authorized<>(this);
 
         return action.execute(new Callable<DomainRecordSet<T>>() {
@@ -770,7 +965,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d", viewId))
                                 .setParameter("access_token", getAccessToken())
@@ -781,7 +976,7 @@ public class TrackviaClient {
                     public DomainRecordSet<T> processResponseEntity(final HttpEntity entity) throws IOException {
                         Reader jsonReader = new InputStreamReader(entity.getContent());
 
-                        return domainGson.fromJson(jsonReader, returnType);
+                        return deserializer.fromJson(jsonReader, returnType);
                     }
                 });
             }
@@ -789,9 +984,18 @@ public class TrackviaClient {
     }
 
     /**
-     * Gets all records in a given view.
+     * Gets records available to the authenticated user in the given view.
+     *
+     * Use with small tables, when all records can be reasonably transferred in a single call.
+     *
+     * @param viewId view identifier in which to get records
+     * @return both field metadata and record data, as a record set
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #getRecords(Class, int) for records as an application-defined class
      */
-    public RecordSet getRecords(final int viewId) throws TrackviaApiException {
+    public RecordSet getRecords(final int viewId) throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<RecordSet> action = new Authorized<>(this);
 
@@ -803,7 +1007,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d", viewId))
                                 .setParameter("access_token", getAccessToken())
@@ -821,10 +1025,23 @@ public class TrackviaClient {
         });
     }
 
+    /**
+     * Gets a record.  The record must be available to the authenticated user in the given view.
+     *
+     * @param domainClass return instances of this type (instead of a raw record Map<String, Object>)
+     * @param viewId view identifier in which to get records
+     * @param recordId unique record identifier
+     * @param <T> parameterized type matching the domainClass parameter
+     * @return both field metadata and record data
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #getRecord(long, long) for a Map<String, Object> record data-type
+     */
     public <T> DomainRecord<T> getRecord(final Class<T> domainClass, final long viewId, final long recordId)
-            throws TrackviaApiException {
+            throws TrackviaApiException, TrackviaClientException {
         final ParameterizedType returnType = new DomainRecordType<T>(domainClass);
-        final Gson domainGson = lookupGsonForDomainClass(domainClass, DomainRecordType.class);
+        final Gson deserializer = lookupDeserializer(domainClass, returnType);
         final Authorized<DomainRecord<T>> action = new Authorized<>(this);
 
         return action.execute(new Callable<DomainRecord<T>>() {
@@ -835,7 +1052,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records/%d", viewId, recordId))
                                 .setParameter("access_token", getAccessToken())
@@ -846,7 +1063,7 @@ public class TrackviaClient {
                     public DomainRecord<T> processResponseEntity(final HttpEntity entity) throws IOException {
                         Reader jsonReader = new InputStreamReader(entity.getContent());
 
-                        return domainGson.fromJson(jsonReader, returnType);
+                        return deserializer.fromJson(jsonReader, returnType);
                     }
                 });
             }
@@ -854,9 +1071,18 @@ public class TrackviaClient {
     }
 
     /**
-     * Gets a specific record in a given view.
+     * Gets a record.  The record must be available to the authenticated user in the given view.
+     *
+     * @param viewId view identifier in which to get records
+     * @param recordId unique record identifier
+     * @return both field metadata and record data, as RecordData (Map<String, Object>)
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #getRecord(Class, long, long) for a record as an application-defined class
      */
-    public Record getRecord(final long viewId, final long recordId) throws TrackviaApiException {
+    public Record getRecord(final long viewId, final long recordId)
+            throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<Record> action = new Authorized<>(this);
 
@@ -868,7 +1094,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records/%d", viewId, recordId))
                                 .setParameter("access_token", getAccessToken())
@@ -886,7 +1112,22 @@ public class TrackviaClient {
         });
     }
 
-    public <T> DomainRecordSet<T> createRecords(final int viewId, final DomainRecordDataBatch<T> batch) {
+    /**
+     * Creates a batch of records in a view accessible to the authenticated user.
+     *
+     * Record id field will be set to a newly assigned value.
+     *
+     * @param viewId view identifier in which to create the record batch
+     * @param batch one or more records for creation
+     * @param <T> user-provided parameterized type of the records in the batch
+     * @return both field metadata and record data, as a record set of <T> objects
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #createRecords(int, trackvia.client.model.RecordDataBatch) for managing data as a {@link RecordData} map
+     */
+    public <T> DomainRecordSet<T> createRecords(final int viewId, final DomainRecordDataBatch<T> batch)
+            throws TrackviaApiException, TrackviaClientException {
         // assertions
         if (batch == null || batch.getData() == null || batch.getData().size() == 0) {
             throw new IllegalArgumentException("Batch input is either empty or null");
@@ -894,7 +1135,9 @@ public class TrackviaClient {
 
         final Class<T> domainClass = (Class<T>) batch.getData().get(0).getClass();
         final ParameterizedType returnType = new DomainRecordSetType<T>(domainClass);
-        final Gson domainGson = lookupGsonForDomainClass(domainClass, DomainRecordSetType.class);
+        final ParameterizedType requestType = new DomainRecordDataBatchType<T>(domainClass);
+        final Gson deserializer = lookupDeserializer(domainClass, returnType);
+        final Gson serializer = lookupSerializer(domainClass, requestType);
         final Authorized<DomainRecordSet<T>> action = new Authorized<>(this);
 
         return action.execute(new Callable<DomainRecordSet<T>>() {
@@ -905,7 +1148,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records", viewId))
                                 .setParameter("access_token", getAccessToken())
@@ -916,12 +1159,12 @@ public class TrackviaClient {
                     public DomainRecordSet<T> processResponseEntity(final HttpEntity entity) throws IOException {
                         Reader jsonReader = new InputStreamReader(entity.getContent());
 
-                        return domainGson.fromJson(jsonReader, returnType);
+                        return deserializer.fromJson(jsonReader, returnType);
                     }
 
                     @Override
                     public HttpEntity getApiRequestEntity() throws UnsupportedEncodingException {
-                        return new StringEntity(domainGson.toJson(batch), ContentType.APPLICATION_JSON);
+                        return new StringEntity(serializer.toJson(batch, requestType), ContentType.APPLICATION_JSON);
                     }
                 });
             }
@@ -929,9 +1172,22 @@ public class TrackviaClient {
     }
 
     /**
-     * Creates records.
+     * Creates a batch of records in a view accessible to the authenticated user.
+     *
+     * Record id field will be set to a newly assigned value.
+     *
+     * @param viewId view identifier in which to create the record batch
+     * @param batch one or more records for creation
+     * @return both field metadata and record data, as a raw Map<String, Object>
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #createRecords(int, trackvia.client.model.DomainRecordDataBatch) for managing
+     * application-defined value objects
+     * @see trackvia.client.model.RecordData for the Map<String, Object> return type
      */
-    public RecordSet createRecords(final int viewId, final RecordDataBatch batch) {
+    public RecordSet createRecords(final int viewId, final RecordDataBatch batch)
+            throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<RecordSet> action = new Authorized<>(this);
 
@@ -943,7 +1199,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records", viewId))
                                 .setParameter("access_token", getAccessToken())
@@ -966,7 +1222,25 @@ public class TrackviaClient {
         });
     }
 
-    public <T> DomainRecord<T> updateRecord(final int viewId, final long recordId, final T data) {
+    /**
+     * Updates a record in a view accessible to the authenticated user.
+     *
+     * Since the given record is an instance as an application-defined class, it will be mapped
+     * to the specified {@link View} according to the serialization policy defined by
+     * {@link trackvia.client.model.DomainRecordDataBatchSerializer}..
+     *
+     * @param viewId view identifier in which to update the record
+     * @param recordId unique record identifier
+     * @param data instance of an application-defined class, representing the record data
+     * @param <T> parameterized type of the record data
+     * @return both field metadata and record data, as a single record containing <T> data
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     * @see #updateRecord(int, long, trackvia.client.model.RecordData) to manage raw {@link RecordData} data
+     */
+    public <T> DomainRecord<T> updateRecord(final int viewId, final long recordId, final T data)
+            throws TrackviaApiException, TrackviaClientException {
         // assertions
         if (data == null) {
             throw new IllegalArgumentException("Data must be non null");
@@ -974,7 +1248,9 @@ public class TrackviaClient {
 
         final Class<T> domainClass = (Class<T>) data.getClass();
         final ParameterizedType returnType = new DomainRecordSetType<T>(domainClass);
-        final Gson domainGson = lookupGsonForDomainClass(domainClass, DomainRecordSetType.class);
+        final ParameterizedType requestType = new DomainRecordDataBatchType<T>(domainClass);
+        final Gson deserializer = lookupDeserializer(domainClass, returnType);
+        final Gson serializer = lookupSerializer(domainClass, requestType);
         final Authorized<DomainRecordSet<T>> action = new Authorized<>(this);
         final DomainRecordSet<T> rs = action.execute(new Callable<DomainRecordSet<T>>() {
             @Override
@@ -984,7 +1260,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records/%s", viewId, recordId))
                                 .setParameter("access_token", getAccessToken())
@@ -995,7 +1271,7 @@ public class TrackviaClient {
                     public DomainRecordSet<T> processResponseEntity(final HttpEntity entity) throws IOException {
                         Reader jsonReader = new InputStreamReader(entity.getContent());
 
-                        return domainGson.fromJson(jsonReader, returnType);
+                        return deserializer.fromJson(jsonReader, returnType);
                     }
 
                     @Override
@@ -1005,7 +1281,7 @@ public class TrackviaClient {
                         list.add(data);
                         batchOfOne.setData(list);
 
-                        return new StringEntity(domainGson.toJson(batchOfOne), ContentType.APPLICATION_JSON);
+                        return new StringEntity(serializer.toJson(batchOfOne), ContentType.APPLICATION_JSON);
                     }
                 });
             }
@@ -1023,9 +1299,21 @@ public class TrackviaClient {
     }
 
     /**
-     * Updates a record.
+     * Updates a record in a view accessible to the authenticated user.
+     *
+     * The record's raw Map<String, Object> entries will map directly, one-for-one
+     * with a {@link View}.  Entries that don't exist in the view are ignored.
+     *
+     * @param viewId view identifier in which to update the record
+     * @param recordId unique record identifier
+     * @param data instance of {@link RecordData}
+     * @return the updated {@link Record}
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
      */
-    public Record updateRecord(final int viewId, final RecordData data) {
+    public Record updateRecord(final int viewId, final long recordId, final RecordData data)
+            throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<RecordSet> action = new Authorized<>(this);
         final RecordSet rs = action.execute(new Callable<RecordSet>() {
@@ -1036,7 +1324,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records/%s", viewId, data.getRecordId()))
                                 .setParameter("access_token", getAccessToken())
@@ -1085,9 +1373,15 @@ public class TrackviaClient {
     }
 
     /**
-     * Deletes a record.
+     *
+     * Deletes a record in the view of the authenticated user.
+     *
+     * @param viewId view identifier in which to delete the record
+     * @param recordId unique record identifier
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
      */
-    public void deleteRecord(final int viewId, final long recordId) {
+    public void deleteRecord(final int viewId, final long recordId) throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<Void> action = new Authorized<>(this);
         action.execute(new Callable<Void>() {
@@ -1098,7 +1392,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records/%d", viewId, recordId))
                                 .setParameter("access_token", getAccessToken())
@@ -1110,10 +1404,26 @@ public class TrackviaClient {
         });
     }
 
+    /**
+     * Adds a file to a record in the view of the authenticated user.
+     *
+     * Since this method returns the record as an application-defined type, that type must be
+     * given as a parameter.  See 'domainClass' below.
+     *
+     * @param domainClass return instances of this type (instead of as raw {@link RecordData}
+     * @param viewId view identifier in which to modify the record
+     * @param recordId unique record identifier
+     * @param fileName name of the file (named like the corresponding Trackvia "column")
+     * @param filePath locally accessible path to the {@link java.nio.file.Path}
+     * @return the updated {@link trackvia.client.model.DomainRecord}, including the file's identifier
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     */
     public <T> DomainRecord<T> addFile(final Class<T> domainClass, final int viewId, final long recordId,
-            final String columnName, final Path filePath) {
+            final String fileName, final Path filePath) throws TrackviaApiException, TrackviaClientException {
         final ParameterizedType returnType = new DomainRecordType<T>(domainClass);
-        final Gson domainGson = lookupGsonForDomainClass(domainClass, DomainRecordType.class);
+        final Gson deserializer = lookupDeserializer(domainClass, returnType);
         final Authorized<DomainRecord<T>> action = new Authorized<>(this);
         return action.execute(new Callable<DomainRecord<T>>() {
             @Override
@@ -1123,9 +1433,9 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
-                                .setPath(String.format("/openapi/views/%d/records/%d/files/%s", viewId, recordId, columnName))
+                                .setPath(String.format("/openapi/views/%d/records/%d/files/%s", viewId, recordId, fileName))
                                 .setParameter("access_token", getAccessToken())
                                 .build();
                     }
@@ -1134,7 +1444,7 @@ public class TrackviaClient {
                     public DomainRecord<T> processResponseEntity(final HttpEntity entity) throws IOException {
                         Reader jsonReader = new InputStreamReader(entity.getContent());
 
-                        return domainGson.fromJson(jsonReader, returnType);
+                        return deserializer.fromJson(jsonReader, returnType);
                     }
 
                     @Override
@@ -1149,9 +1459,19 @@ public class TrackviaClient {
     }
 
     /**
-     * Adds file contents (image or document) to a record, if permissible.
+     * Adds a file to a record in the view of the authenticated user.
+     *
+     * @param viewId view identifier in which to modify the record
+     * @param recordId unique record identifier
+     * @param fileName name of the file (named like the corresponding Trackvia "column")
+     * @param filePath locally accessible path to the {@link java.nio.file.Path}
+     * @return updated {@link trackvia.client.model.Record}, including the file's identifier
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
      */
-    public Record addFile(final int viewId, final long recordId, final String fileName, final Path filePath) throws TrackviaApiException {
+    public Record addFile(final int viewId, final long recordId, final String fileName, final Path filePath)
+            throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<Record> action = new Authorized<>(this);
         return action.execute(new Callable<Record>() {
@@ -1162,7 +1482,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records/%d/files/%s", viewId, recordId, fileName))
                                 .setParameter("access_token", getAccessToken())
@@ -1188,9 +1508,18 @@ public class TrackviaClient {
     }
 
     /**
-     * Gets file contents from a record, if permissible.
+     * Gets file contents from a record in a view of the authenticated user.
+     *
+     * @param viewId view identifier in which to modify the record
+     * @param recordId unique record identifier
+     * @param fileName name of the file (named like the corresponding Trackvia "column")
+     * @param filePath locally accessible path to the {@link java.nio.file.Path}
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
      */
-    public void getFile(final int viewId, final long recordId, final String fileName, final Path filePath) {
+    public void getFile(final int viewId, final long recordId, final String fileName, final Path filePath)
+            throws TrackviaApiException, TrackviaClientException {
         final Authorized<Void> action = new Authorized<>(this);
 
         action.execute(new Callable<Void>() {
@@ -1207,7 +1536,7 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPath(String.format("/openapi/views/%d/records/%d/files/%s", viewId, recordId, fileName))
                                 .setParameter("access_token", getAccessToken())
@@ -1228,9 +1557,16 @@ public class TrackviaClient {
     }
 
     /**
-     * Deletes a file, if permissible.
+     * Deletes a file in a view of the authenticated user, if permissible.
+     *
+     * @param viewId view identifier in which to modify the record
+     * @param recordId unique record identifier
+     * @param fileName name of the file (named like the corresponding Trackvia "column")
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
      */
-    public void deleteFile(final int viewId, final long recordId, final String columnName) {
+    public void deleteFile(final int viewId, final long recordId, final String fileName)
+            throws TrackviaApiException, TrackviaClientException {
         final Authorized<Void> action = new Authorized<>(this);
 
         action.execute(new Callable<Void>() {
@@ -1241,9 +1577,9 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         return new URIBuilder()
-                                .setScheme("https")
+                                .setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
-                                .setPath(String.format("/openapi/views/%d/records/%d/files/%s", viewId, recordId, columnName))
+                                .setPath(String.format("/openapi/views/%d/records/%d/files/%s", viewId, recordId, fileName))
                                 .setParameter("access_token", getAccessToken())
                                 .build();
                     }

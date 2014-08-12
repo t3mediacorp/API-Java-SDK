@@ -23,18 +23,6 @@ public class DomainRecordSet<T> {
         this.totalCount = totalCount;
     }
 
-    /*
-    public RecordDataBatch asBatch() {
-        RecordDataBatch batch = new RecordDataBatch();
-        List<RecordData> rd = new ArrayList<RecordData>();
-
-        rd.addAll(data);
-        batch.setData(rd);
-
-        return batch;
-    }
-    */
-
     public List<FieldMetadata> getStructure() {
         return structure;
     }

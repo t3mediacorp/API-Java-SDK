@@ -3,10 +3,10 @@ package trackvia.client.model;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-public class DomainRecordType<T>  implements ParameterizedType {
+public class DomainRecordDataBatchType<T> implements ParameterizedType {
     private Class<T> parameterClass;
 
-    public DomainRecordType(Class<T> parameterClass) {
+    public DomainRecordDataBatchType(Class<T> parameterClass) {
         this.parameterClass = parameterClass;
     }
 
@@ -17,7 +17,7 @@ public class DomainRecordType<T>  implements ParameterizedType {
 
     @Override
     public Type getRawType() {
-        return DomainRecord.class;
+        return DomainRecordDataBatch.class;
     }
 
     @Override
