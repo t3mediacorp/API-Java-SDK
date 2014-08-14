@@ -244,13 +244,13 @@ public class TestCommandLineApp {
 		input = readLine("port (443): ");
 		port = input.equals("") ? port : input;
 
-		String username = "";
-		input = readLine("username: ");
-		username = input;
+		String username = "john.etherton+pre@trackvia.com";
+		input = readLine("username (" + username + "): ");
+		username = input.equals("") ? username : input;
 
-		String password = "";
-		input = readLine("password: ");
-		password = input;
+		String password = "password";
+		input = readLine("password (" + password + "): ");
+		password = input.equals("") ? password : input;
 
 		client = TrackviaClient.create(scheme, hostname, Integer.parseInt(port), username, password);
 	}
