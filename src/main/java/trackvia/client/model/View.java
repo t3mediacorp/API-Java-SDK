@@ -57,4 +57,9 @@ public class View {
         result = prime * result + (int) ((id != null) ? (id.hashCode()) : (0));
         return result;
     }
+    
+    @Override
+    public String toString() {
+    	return "ID: " + id + "\tName: " + name;
+    }
 }
