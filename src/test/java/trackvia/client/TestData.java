@@ -14,7 +14,6 @@ public class TestData {
         public static final String INTEGRATION_TEST_VIEW_NAME = "Test View";
 
         // Column names
-        public static final String COLUMN_ID = "id";
         public static final String COLUMN_FIRST_NAME = "firstName";
         public static final String COLUMN_LAST_NAME = "lastName";
         public static final String COLUMN_EMAIL = "email";
@@ -26,7 +25,7 @@ public class TestData {
 
             data = new RecordData();
 
-            data.put(COLUMN_ID, "1");
+            data.put(Identifiable.INTERNAL_ID_FIELD_NAME, "1");
             data.put(COLUMN_FIRST_NAME, "Rodney");
             data.put(COLUMN_LAST_NAME, "Dangerously");
             data.put(COLUMN_EMAIL, "rod@danger-never-dies.com");
@@ -41,7 +40,7 @@ public class TestData {
 
             data = new RecordData();
 
-            data.put(COLUMN_ID, "2");
+            data.put(Identifiable.INTERNAL_ID_FIELD_NAME, "2");
             data.put(COLUMN_FIRST_NAME, "Larry");
             data.put(COLUMN_LAST_NAME, "Lounging");
             data.put(COLUMN_EMAIL, "larry@easy-does.us");
@@ -54,7 +53,7 @@ public class TestData {
 
     public static class Unit {
 
-        public static class Contact {
+        public static class Contact implements Identifiable {
             private Long id;
             private String contactName;
             private String companyName;
@@ -66,6 +65,18 @@ public class TestData {
             private Date lastContactDate;
 
             public Contact() {}
+
+            /**
+             * Implements Identifiable
+              */
+            public Long getId() {
+                return id;
+            }
+
+            public void setId(Long id) {
+                this.id = id;
+            }
+
 
             public String getContactName() {
                 return contactName;
@@ -123,14 +134,6 @@ public class TestData {
                 this.testFile = testFile;
             }
 
-            public Long getId() {
-                return id;
-            }
-
-            public void setId(Long id) {
-                this.id = id;
-            }
-
             public Date getLastContactDate() {
                 return lastContactDate;
             }
@@ -157,6 +160,7 @@ public class TestData {
 
         public static Record getUnitTestRecord1() {
             List<FieldMetadata> structure = Arrays.asList(new FieldMetadata[]{
+                    new FieldMetadata(Identifiable.INTERNAL_ID_FIELD_NAME, TrackviaDataType.Number.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("ContactName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("CompanyName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("Locations", TrackviaDataType.CheckBox.type(), true, false, Arrays.asList(new String[]{"CO", "CA"})),
@@ -168,7 +172,7 @@ public class TestData {
             });
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
             RecordData data = new RecordData();
-            data.put("id", 1L);
+            data.put(Identifiable.INTERNAL_ID_FIELD_NAME, 1L);
             data.put("ContactName", "James Randall");
             data.put("CompanyName", "Cryogenic Futures");
             data.put("Locations", Arrays.asList(new String[]{"CA"}));
@@ -195,6 +199,7 @@ public class TestData {
 
         public static List<FieldMetadata> getUnitTestUserFieldMetaData1() {
             return Arrays.asList(new FieldMetadata[]{
+                    new FieldMetadata(Identifiable.INTERNAL_ID_FIELD_NAME, TrackviaDataType.Number.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("FirstName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("LastName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("Status", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList()),
@@ -210,15 +215,16 @@ public class TestData {
 
         public static RecordSet getUnitTestRecordSet1() {
             List<FieldMetadata> structure = Arrays.asList(new FieldMetadata[]{
+                    new FieldMetadata(Identifiable.INTERNAL_ID_FIELD_NAME, TrackviaDataType.Number.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("ContactName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("CompanyName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList())});
             List<RecordData> data = Arrays.asList(new RecordData[]{new RecordData(), new RecordData()});
 
-            data.get(0).put("id", 1L);
+            data.get(0).put(Identifiable.INTERNAL_ID_FIELD_NAME, 1L);
             data.get(0).put("ContactName", "James Randall");
             data.get(0).put("CompanyName", "Cryogenic Futures");
 
-            data.get(1).put("id", 2L);
+            data.get(1).put(Identifiable.INTERNAL_ID_FIELD_NAME, 2L);
             data.get(1).put("ContactName", "Simon Black");
             data.get(1).put("CompanyName", "Sunshine Industries");
 
@@ -227,11 +233,12 @@ public class TestData {
 
         public static RecordSet getUnitTestRecordSet2() {
             List<FieldMetadata> structure = Arrays.asList(new FieldMetadata[]{
+                    new FieldMetadata(Identifiable.INTERNAL_ID_FIELD_NAME, TrackviaDataType.Number.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("ContactName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("CompanyName", TrackviaDataType.ShortAnswer.type(), true, false, Collections.<String>emptyList())});
             List<RecordData> data = Arrays.asList(new RecordData[]{new RecordData()});
 
-            data.get(0).put("id", 1L);
+            data.get(0).put(Identifiable.INTERNAL_ID_FIELD_NAME, 1L);
             data.get(0).put("ContactName", "James Randall");
             data.get(0).put("CompanyName", "Cryogenic Futures");
 

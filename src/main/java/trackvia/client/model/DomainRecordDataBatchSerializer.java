@@ -27,6 +27,11 @@ import java.lang.reflect.Type;
  * This implementation uses the Gson default serializer 100%, serving as an extension point, including
  * the default "naming policy" which literally uses the Java field-name for the Trackvia field name.
  *
+ * The TrackviaClient uses a Gson exclusion strategy, to omit serialization of any Identifiable fields,
+ * because a) the internal "Record ID" field has a name that's not a legal Java identifier and b)
+ * setting the internal "Record ID" is not a legal API operation.
+ *
+ * @see trackvia.client.model.TrackviaSerializationExclusionStrategy
  */
 public class DomainRecordDataBatchSerializer<T> implements JsonSerializer<DomainRecordDataBatch<T>> {
     protected Class<T> domainClass;

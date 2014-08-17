@@ -47,18 +47,13 @@ public class RecordDataDeserializer implements JsonDeserializer<RecordData> {
         RecordData rd = new RecordData();
         JsonObject recordDataObject = jsonElement.getAsJsonObject();
 
-        // 'id' is stored on every record.
-        JsonElement idElement = recordDataObject.get("id");
-        rd.put("id", idElement.getAsLong());
-
         // All other non-'id' fields.
         Set<Map.Entry<String, JsonElement>> entries = recordDataObject.entrySet();
         for (Map.Entry<String, JsonElement> entry : entries) {
             String fieldName = entry.getKey();
-            if (!"id".equalsIgnoreCase(fieldName)) {
-                rd.put(fieldName, deserialize(entry.getValue()));
-            }
+            rd.put(fieldName, deserialize(entry.getValue()));
         }
+
         return rd;
     }
 

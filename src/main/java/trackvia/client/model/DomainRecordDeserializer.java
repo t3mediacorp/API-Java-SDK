@@ -43,6 +43,9 @@ import java.util.Map;
  *
  * </pre>
  *
+ * Domain classes must implement Identifiable, for setting and getting a record's identifier.  The
+ * identifier is used as a parameter to API endpoints requiring a "record id".
+ *
  * Limitations:
  * <ul>
  *     <li>Nested, embedded JSON objects are not supported (e.g., Map within a Map).</li>
@@ -53,6 +56,7 @@ import java.util.Map;
  * calls.
  *
  * @see trackvia.client.model.TrackviaDataType
+ * @see trackvia.client.model.Identifiable
  *
  */
 
