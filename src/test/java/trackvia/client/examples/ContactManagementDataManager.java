@@ -76,7 +76,7 @@ public class ContactManagementDataManager {
         activities.add(createActivity("Email", "Open", "Trying to initiate contact with Patty Smith @ Google"));
 
         try {
-            client = TrackviaClient.create("go.api.trackvia.com", "tom.michaud@gmail.com", "password");
+            client = TrackviaClient.create("go.api.trackvia.com", "tom.michaud@gmail.com", "password", "12345");
 
             client.createRecords(CONTACTS_VIEW_ID, contactsBatch);
             client.createRecords(ACTIVITIES_VIEW_ID, activitiesBatch);

@@ -15,21 +15,37 @@ import static trackvia.client.TestData.*;
 
 @RunWith(JUnit4.class)
 public class TrackviaClientIntegrationTest {
-    static final String TEST_URI = "go.api.trackvia.com";
-    static final String TEST_USER = "tom.michaud@gmail.com";
+    static final String TEST_SCHEME = "http";
+    static final String TEST_HOST = "localhost";
+    static final int TEST_PORT = 8080;
+    static final String TEST_BASE_URI = "/xvia";
+    static final String TEST_USER = "bpmsols@gmail.com";
     static final String TEST_PASSWORD = "password";
-    static final int TEST_VIEW_ID = 13;
+    static final String TEST_API_USER_KEY = "12345";
+    static final int TEST_VIEW_ID = 5;
+
+    TrackviaClient getClient() throws Exception {
+        final boolean localEnv = true;
+
+        if (localEnv) {
+            return TrackviaClient.create(TEST_BASE_URI, TEST_SCHEME, TEST_HOST, TEST_PORT, TEST_USER, TEST_PASSWORD,
+                    TEST_API_USER_KEY);
+        } else {
+            throw new UnsupportedOperationException("Can't create an integration test for a non-local environment");
+        }
+    }
 
     @Test
     public void testAuthorized() throws Exception {
         // throws TrackviaApiException if access is not granted
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
     }
 
     @Test
     public void testUnauthorized() throws Exception {
         try {
-            TrackviaClient client = TrackviaClient.create(TEST_URI, "fake_user", "fake_password");
+            TrackviaClient client = TrackviaClient.create(TEST_BASE_URI, TEST_SCHEME, TEST_HOST, TEST_PORT,
+                    "fake_user", "fake_password", "fake api user key");
         } catch (TrackviaApiException e) {
             Assert.assertEquals(e.getApiError(), ApiError.InvalidGrant);
         }
@@ -37,7 +53,7 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testGetApps() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         List<App> apps = client.getApps();
 
         Assert.assertNotNull(apps);
@@ -46,7 +62,7 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testGetViews() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         List<View> views = client.getViews();
 
         Assert.assertNotNull(views);
@@ -55,7 +71,7 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testGetRecords() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         RecordSet rs = client.getRecords(TEST_VIEW_ID);
 
         Assert.assertNotNull(rs);
@@ -65,16 +81,16 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testGetRecord() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         RecordData createdRecord = createOneTestRecord();
-        Record record = client.getRecord(TEST_VIEW_ID, createdRecord.getRecordId());
+        Record record = client.getRecord(TEST_VIEW_ID, createdRecord.getId());
 
         Assert.assertNotNull(record);
     }
 
     @Test
     public void testFindRecords() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         RecordSet rs = client.findRecords(TEST_VIEW_ID, "1", 0, 25);
 
         Assert.assertNotNull(rs);
@@ -84,7 +100,7 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testGetUsers() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         List<User> users = client.getUsers(0, 25);
 
         Assert.assertNotNull(users);
@@ -97,7 +113,7 @@ public class TrackviaClientIntegrationTest {
         final String first = "UnitTest";
         final String last = "User";
 
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         User user = client.createUser(email, first, last, TimeZone.getDefault());
 
         Assert.assertNotNull(user);
@@ -109,12 +125,9 @@ public class TrackviaClientIntegrationTest {
 
         records.add(Integration.getIntegrationTestRecord1().getData());
 
-        long id = System.currentTimeMillis();
-        records.get(0).put(Integration.COLUMN_ID, id);
-
         batch.setData(records);
 
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         RecordSet rs = client.createRecords(TEST_VIEW_ID, batch);
 
         Assert.assertNotNull(rs);
@@ -132,13 +145,9 @@ public class TrackviaClientIntegrationTest {
         records.add(Integration.getIntegrationTestRecord1().getData());
         records.add(Integration.getIntegrationTestRecord2().getData());
 
-        long id = System.currentTimeMillis();
-        records.get(0).put(Integration.COLUMN_ID, id);
-        records.get(1).put(Integration.COLUMN_ID, id + 1);
-
         batch.setData(records);
 
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         RecordSet rs = client.createRecords(TEST_VIEW_ID, batch);
 
         Assert.assertNotNull(rs);
@@ -148,7 +157,7 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testUpdateRecord() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
 
         RecordSet rs = client.createRecords(TEST_VIEW_ID, batchOfOne());
 
@@ -159,10 +168,10 @@ public class TrackviaClientIntegrationTest {
         RecordData recordData = rs.getData().get(0);
 
         // change a field and update
-        long id = recordData.getRecordId();
+        long recordId = recordData.getId();
         RecordData updatedData = new RecordData(recordData);
         updatedData.put(Integration.COLUMN_FIRST_NAME, UUID.randomUUID().toString());
-        Record updatedRecord = client.updateRecord(TEST_VIEW_ID, id, updatedData);
+        Record updatedRecord = client.updateRecord(TEST_VIEW_ID, recordId, updatedData);
 
         Assert.assertNotNull(updatedRecord);
         Assert.assertEquals(updatedRecord.getData().get(Integration.COLUMN_FIRST_NAME),
@@ -175,15 +184,13 @@ public class TrackviaClientIntegrationTest {
 
         records.add(Integration.getIntegrationTestRecord1().getData());
 
-        records.get(0).put(Integration.COLUMN_ID, System.currentTimeMillis()/1000);
-
         batch.setData(records);
 
         return batch;
     }
     @Test
     public void testDeleteRecord() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         RecordSet rs = client.createRecords(TEST_VIEW_ID, batchOfOne());
 
         Assert.assertNotNull(rs);
@@ -191,16 +198,16 @@ public class TrackviaClientIntegrationTest {
         Assert.assertEquals(1, rs.getData().size());
 
         RecordData recordData = rs.getData().get(0);
-        client.deleteRecord(TEST_VIEW_ID, recordData.getRecordId());
+        client.deleteRecord(TEST_VIEW_ID, recordData.getId());
 
         // verify
-        Record record = client.getRecord(TEST_VIEW_ID, recordData.getRecordId());
+        Record record = client.getRecord(TEST_VIEW_ID, recordData.getId());
         Assert.assertNull(record);
     }
 
     @Test
     public void testAddFile() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         Path filePath = null;
 
         try {
@@ -210,7 +217,7 @@ public class TrackviaClientIntegrationTest {
             filePath = Files.createTempFile("trackvia-client-file", "txt");
             Files.write(filePath, "This is only a test".getBytes());
 
-            Record record = client.addFile(TEST_VIEW_ID, testRecord.getRecordId(), Integration.COLUMN_FILE1, filePath);
+            Record record = client.addFile(TEST_VIEW_ID, testRecord.getId(), Integration.COLUMN_FILE1, filePath);
 
             Assert.assertNotNull(record);
             Assert.assertNotNull(record.getData().get(Integration.COLUMN_FILE1));
@@ -222,17 +229,17 @@ public class TrackviaClientIntegrationTest {
 
     @Test
     public void testGetFile() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         String pathToFile = String.format("./trackvia-client-test-%d", System.currentTimeMillis() / 1000L);
         Path filePath = Paths.get(pathToFile);
         RecordData testRecord = createOneTestRecord();
 
-        client.getFile(TEST_VIEW_ID, testRecord.getRecordId(), Integration.COLUMN_FILE1, filePath);
+        client.getFile(TEST_VIEW_ID, testRecord.getId(), Integration.COLUMN_FILE1, filePath);
     }
 
     @Test
     public void testDeleteFile() throws Exception {
-        TrackviaClient client = TrackviaClient.create(TEST_URI, TEST_USER, TEST_PASSWORD);
+        TrackviaClient client = getClient();
         Path filePath = null;
 
         try {
@@ -242,7 +249,7 @@ public class TrackviaClientIntegrationTest {
 
             RecordData originalRecord = createOneTestRecord();
 
-            Record updatedRecord = client.addFile(TEST_VIEW_ID, originalRecord.getRecordId(), Integration.COLUMN_FILE1, filePath);
+            Record updatedRecord = client.addFile(TEST_VIEW_ID, originalRecord.getId(), Integration.COLUMN_FILE1, filePath);
 
             Assert.assertNotNull(updatedRecord);
             Assert.assertNotNull(updatedRecord.getData().get(Integration.COLUMN_FILE1));

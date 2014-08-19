@@ -23,7 +23,7 @@ public abstract class DomainRecordDeserializerBase<T> {
         for (Method method : clazz.getMethods()) {
             if (method.getName().startsWith("set") && method.getName().length() > "set".length()) {
                 final int startIndex = "set".length();
-                final String normalizedName = method.getName().substring(startIndex).toUpperCase();
+                final String normalizedName = normalizeName(method.getName().substring(startIndex));
 
                 this.methodNameToMethodIndex.put(normalizedName, method);
             }
@@ -40,21 +40,14 @@ public abstract class DomainRecordDeserializerBase<T> {
                     this.domainClass.getName()), e);
         }
 
-        // 'id' is stored on every record.
-        final JsonElement idElement = recordDataObject.get("id");
-        setDomainFieldValue(recordData, "id", idElement.getAsLong());
-
         // All other non-'id' fields.
         final Set<Map.Entry<String, JsonElement>> entries = recordDataObject.entrySet();
         for (Map.Entry<String, JsonElement> entry : entries) {
             final String fieldName = entry.getKey();
+            final String normalizedName = fieldName.toUpperCase();
+            final TrackviaDataType trackviaType = fm.get(normalizedName).getType();
 
-            if (!"id".equalsIgnoreCase(fieldName)) {
-                final String normalizedName = fieldName.toUpperCase();
-                final TrackviaDataType trackviaType = fm.get(normalizedName).getType();
-
-                setDomainFieldValue(recordData, fieldName, deserialize(trackviaType, entry.getValue()));
-            }
+            setDomainFieldValue(recordData, fieldName, deserialize(trackviaType, entry.getValue()));
         }
 
         return recordData;
@@ -105,14 +98,19 @@ public abstract class DomainRecordDeserializerBase<T> {
     }
 
     protected void setDomainFieldValue(T recordData, String fieldName, Object value) throws JsonParseException {
-        final String normalizedName = fieldName.toUpperCase();
+        final String normalizedName = normalizeName(fieldName);
         Method m = this.methodNameToMethodIndex.get(normalizedName);
+
         try {
             m.invoke(recordData, value);
         } catch (Exception e) {
             throw new JsonParseException(String.format("Error invoking setter (%s(%s)): %s", m.getName(),
                     value.toString(), e.getMessage()), e);
         }
+    }
+
+    protected String normalizeName(String name) {
+        return name.toUpperCase();
     }
 
     protected Object deserialize(JsonElement jsonElement) {

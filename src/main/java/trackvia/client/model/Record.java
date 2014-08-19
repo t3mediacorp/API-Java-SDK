@@ -35,7 +35,7 @@ public class Record {
         this.data = data;
     }
 
-    public long getRecordId() { return (this.data != null) ? (this.data.getRecordId()) : (null); }
+    public long getRecordId() { return (this.data != null) ? (this.data.getId()) : (null); }
 
     @Override
     public boolean equals(Object o) {
