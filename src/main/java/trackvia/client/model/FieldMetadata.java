@@ -9,6 +9,9 @@ public class FieldMetadata {
     private Boolean required;
     private Boolean unique;
     private List<String> choices;
+    private Boolean canRead;
+    private Boolean canUpdate;
+    private Boolean canCreate;
 
     public FieldMetadata() {}
 
@@ -58,5 +61,29 @@ public class FieldMetadata {
 
     public void setChoices(List<String> choices) {
         this.choices = choices;
+    }
+
+    public Boolean getCanRead() {
+        return canRead;
+    }
+
+    public void setCanRead(Boolean canRead) {
+        this.canRead = canRead;
+    }
+
+    public Boolean getCanUpdate() {
+        return canUpdate;
+    }
+
+    public void setCanUpdate(Boolean canUpdate) {
+        this.canUpdate = canUpdate;
+    }
+
+    public Boolean getCanCreate() {
+        return canCreate;
+    }
+
+    public void setCanCreate(Boolean canCreate) {
+        this.canCreate = canCreate;
     }
 }
