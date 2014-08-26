@@ -754,7 +754,7 @@ public class TrackviaClient {
      * @see #getViews() to get all available views
      */
     public View getView(final String name) throws TrackviaApiException, TrackviaClientException {
-        List<View> views = getViews(null);
+        List<View> views = getViews(name);
 
         return (views == null || views.isEmpty()) ? (null) : (views.get(0));
     }
