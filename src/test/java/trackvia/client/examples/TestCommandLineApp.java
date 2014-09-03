@@ -251,8 +251,12 @@ public class TestCommandLineApp {
 		String password = "password";
 		input = readLine("password (" + password + "): ");
 		password = input.equals("") ? password : input;
+		
+		String apiUserKey = "12345";
+		input = readLine("User key (" + apiUserKey + "): ");
+		apiUserKey = input.equals("") ? apiUserKey : input;
 
-		client = TrackviaClient.create(scheme, hostname, Integer.parseInt(port), username, password);
+		client = TrackviaClient.create("/", scheme, hostname, Integer.parseInt(port), username, password, apiUserKey);
 	}
 
 	/**
