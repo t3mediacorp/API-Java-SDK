@@ -544,7 +544,7 @@ public class TrackviaClient {
                         .setPath(path)
                         .setParameter("username", username)
                         .setParameter("password", password)
-                        .setParameter("client_id", "xvia-webapp")
+                        .setParameter("client_id", "TrackViaAPI")
                         .setParameter("grant_type", "password")
                         .build();
             }
