@@ -3,9 +3,12 @@ package trackvia.client;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.FileBody;
+
 import trackvia.client.model.*;
+
 import org.apache.http.HttpClientConnection;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
@@ -1383,6 +1386,7 @@ public class TrackviaClient {
      */
     public Record updateRecord(final int viewId, final long recordId, final RecordData data)
             throws TrackviaApiException, TrackviaClientException {
+    	data.put(Identifiable.INTERNAL_ID_FIELD_NAME, recordId);
         final Gson gson = this.recordAsMapGson;
         final Authorized<RecordSet> action = new Authorized<>(this);
         final RecordSet rs = action.execute(new Callable<RecordSet>() {
