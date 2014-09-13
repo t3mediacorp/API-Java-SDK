@@ -32,6 +32,9 @@ public class TrackViaConnector {
 				gameState.board[i][j] = piece;
 			}
 		}
+		String pieceStr = record.getData().get("Turn") == null ? null : record.getData().get("Turn").toString();
+		Piece turn = Piece.getPiece(pieceStr);
+		gameState.setTurn(turn);
 	}
 	
 	public void writeGameState(GameState gameState, int viewId) {
@@ -42,6 +45,7 @@ public class TrackViaConnector {
 				data.put(i+","+j, piece.toString());
 			}
 		}
+		data.put("Turn", gameState.getTurn().toString());
 		trackVia.updateRecord(viewId, gameState.recordId, data);
 	}
 	
@@ -67,6 +71,7 @@ public class TrackViaConnector {
 		//set the name in the record
 		RecordData data = new RecordData();
 		data.put("Name", name);
+		data.put("Turn", "X"); //X always goes first
 		
 		//add the record to a record list
 		List<RecordData> recordList = new ArrayList<>(1);

@@ -38,17 +38,26 @@ public class GameController {
 	
 	public void playGame() {
 		connector.readInGameState(gameState, viewId);
-		gameState.renderGame();
 		Piece winner = gameState.isWinner();
-		while(winner == Piece.NULL) {
-			makeMove();
-			readLine("Press enter after your competitor has made a move");
-			connector.readInGameState(gameState, viewId);
+		while(winner == Piece.EMPTY) {
+			while(gameState.getTurn() != piece) {
+				System.out.println("It's not your turn");
+				readLine("Press enter after your competitor has made a move");
+				connector.readInGameState(gameState, viewId);
+			}
 			gameState.renderGame();
+			makeMove();
+			gameState.renderGame();
+			
 			winner = gameState.isWinner();
 		}
 		
-		System.out.print("The winner is: " + winner);
+		if(winner == null) {
+			System.out.println("The Cat won");
+		} else {
+			System.out.println("The winner is: " + winner);
+		}
+		System.out.println("Thanks for playing TrackVia Tic-Tac-Toe");
 	}
 	
 	protected void makeMove() {
@@ -61,6 +70,11 @@ public class GameController {
 			column = Integer.parseInt(readLine("Which column do you want to place a piece in: "));
 		}
 		gameState.setPiece(piece, row, column);
+		if(piece == Piece.O) {
+			gameState.setTurn(Piece.X);
+		} else {
+			gameState.setTurn(Piece.O);
+		}
 		connector.writeGameState(gameState, viewId);
 	}
 	

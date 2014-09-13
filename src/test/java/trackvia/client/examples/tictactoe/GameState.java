@@ -6,10 +6,12 @@ public class GameState {
 	
 	protected long recordId;
 	
+	protected Piece turn; //whose turn is it.
+	
 	public GameState() {
 		for(int i = 0; i < 3; i++) {
 			for(int j = 0; j < 3; j++) {
-				board[i][j] = Piece.NULL; 
+				board[i][j] = Piece.EMPTY; 
 			}
 		}
 	}
@@ -23,7 +25,7 @@ public class GameState {
 	}
 	
 	public boolean isEmpty(int row, int column) {
-		return Piece.NULL == board[row][column];
+		return Piece.EMPTY == board[row][column];
 	}
 	
 	public void setPiece(Piece piece, int row, int column) {
@@ -45,74 +47,96 @@ public class GameState {
 	public Piece isWinner() {
 		//check rows
 		for(int i = 0; i < 3; i++) {
-			Piece p = Piece.NULL;
+			Piece p = Piece.EMPTY;
 			for(int j = 0; j < 3; j++) {
-				if(board[i][j] == Piece.NULL) {
-					p = Piece.NULL;
+				if(board[i][j] == Piece.EMPTY) {
+					p = Piece.EMPTY;
 					break; //can't be empty
-				} else if(p == Piece.NULL) {
+				} else if(p == Piece.EMPTY) {
 					p = board[i][j];
 				} else if(p != board[i][j]) {
-					p = Piece.NULL;
+					p = Piece.EMPTY;
 					break;
 				}
 			}
-			if(p != Piece.NULL) {
+			if(p != Piece.EMPTY) {
 				return p;
 			}
 		}
 		//check columns
 		for(int i = 0; i < 3; i++) {
-			Piece p = Piece.NULL;
+			Piece p = Piece.EMPTY;
 			for(int j = 0; j < 3; j++) {
-				if(board[j][i] == Piece.NULL) {
-					p = Piece.NULL;
+				if(board[j][i] == Piece.EMPTY) {
+					p = Piece.EMPTY;
 					break; //can't be empty
-				} else if(p == Piece.NULL) {
+				} else if(p == Piece.EMPTY) {
 					p = board[j][i];
 				} else if(p != board[j][i]) {
-					p = Piece.NULL;
+					p = Piece.EMPTY;
 					break;
 				}
 			}
-			if(p != Piece.NULL) {
+			if(p != Piece.EMPTY) {
 				return p;
 			}
 		}
 		//check the diagonals
-		Piece p = Piece.NULL;
+		Piece p = Piece.EMPTY;
 		for(int j = 0; j < 3; j++) {
-			if(board[j][j] == Piece.NULL) {
-				p = Piece.NULL;
+			if(board[j][j] == Piece.EMPTY) {
+				p = Piece.EMPTY;
 				break; //can't be empty
-			} else if(p == Piece.NULL) {
+			} else if(p == Piece.EMPTY) {
 				p = board[j][j];
 			} else if(p != board[j][j]) {
-				p = Piece.NULL;
+				p = Piece.EMPTY;
 				break;
 			}
 		}
-		if(p != Piece.NULL) {
+		if(p != Piece.EMPTY) {
 			return p;
 		}
 		
-		p = Piece.NULL;
+		p = Piece.EMPTY;
 		for(int j = 0; j < 3; j++) {
 			int i = 2 - j;
-			if(board[j][i] == Piece.NULL) {
-				p = Piece.NULL;
+			if(board[j][i] == Piece.EMPTY) {
+				p = Piece.EMPTY;
 				break; //can't be empty
-			} else if(p == Piece.NULL) {
+			} else if(p == Piece.EMPTY) {
 				p = board[j][i];
 			} else if(p != board[j][i]) {
-				p = Piece.NULL;
+				p = Piece.EMPTY;
 				break;
 			}
 		}
-		if(p != Piece.NULL) {
+		if(p != Piece.EMPTY) {
 			return p;
 		}
-		return Piece.NULL;
+		
+		//did the cat win?
+		int countFull = 0;
+		for(int i = 0; i < 3; i++) {
+			for(int j = 0; j < 3; j++) {
+				if(board[j][i] != Piece.EMPTY) {
+					countFull++;
+				}
+			}
+		}
+		if(countFull == 9) {
+			return null;
+		}
+			
+		return Piece.EMPTY;
+	}
+
+	public Piece getTurn() {
+		return turn;
+	}
+
+	public void setTurn(Piece turn) {
+		this.turn = turn;
 	}
 	
 	

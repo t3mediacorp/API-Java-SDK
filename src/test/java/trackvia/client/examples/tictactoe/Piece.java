@@ -3,7 +3,7 @@ package trackvia.client.examples.tictactoe;
 public enum Piece {
 	X("X"),
 	O("O"),
-	NULL(" ");
+	EMPTY(" ");
 	
 	protected String representation;
 	
@@ -13,13 +13,13 @@ public enum Piece {
 	
 	public static Piece getPiece(String value) {
 		if(value == null) {
-			return NULL;
+			return EMPTY;
 		}else if(value.toUpperCase().equals(X.toString())) {
 			return X;
 		} else if(value.toUpperCase().equals(O.toString())) {
 			return O;
 		} else {
-			return NULL;
+			return EMPTY;
 		}
 	}
 	
