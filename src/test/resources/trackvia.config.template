@@ -1,4 +1,4 @@
--- listing properties --
+-- Copy as trackvia.config with your config information --
 user_key=12345
 scheme=https
 hostname=go.trackvia.com
