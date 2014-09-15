@@ -2,6 +2,7 @@ package trackvia.client.examples.tictactoe;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
@@ -143,7 +144,12 @@ public class GameController {
 		String path;
 		
 		Properties config = new Properties();
-		FileInputStream inputStream = new FileInputStream(configPath);
+		FileInputStream inputStream = null;
+		try {
+			inputStream = new FileInputStream(configPath);
+		} catch (FileNotFoundException e) {
+			throw new FileNotFoundException("Config file ("+ configPath + ") not found. Did you remember to make a copy from the template file?");
+		}
 		config.load(inputStream);
 		email = config.getProperty("email");
 		userKey = config.getProperty("user_key");

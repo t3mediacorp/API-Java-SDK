@@ -1,0 +1,6 @@
+.classpath
+.gitignore
+.project
+.settings/
+src/test/resources/trackvia.config
+target/
