@@ -148,7 +148,8 @@ public class GameController {
 		try {
 			inputStream = new FileInputStream(configPath);
 		} catch (FileNotFoundException e) {
-			throw new FileNotFoundException("Config file ("+ configPath + ") not found. Did you remember to make a copy from the template file?");
+			throw new FileNotFoundException("Config file ("+ configPath + ") not found. " + 
+					"Did you remember to make a copy from the template file?");
 		}
 		config.load(inputStream);
 		email = config.getProperty("email");
