@@ -11,7 +11,7 @@ import trackvia.client.TrackviaClient;
 
 public class GameController {
 	
-	public static final String CONFIG_PATH = "src/test/resources/tetris.config";
+	public static final String CONFIG_PATH = "src/test/resources/trackvia.config";
 	
 	TrackViaConnector connector;
 

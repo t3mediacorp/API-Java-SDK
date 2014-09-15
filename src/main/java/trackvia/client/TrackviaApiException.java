@@ -8,6 +8,7 @@ public class TrackviaApiException extends RuntimeException {
     private Throwable cause;
 
     public TrackviaApiException(final ApiErrorResponse apiErrorResponse) {
+    	super(apiErrorResponse.getMessage());
         this.apiErrorResponse = apiErrorResponse;
         this.cause = null;
     }

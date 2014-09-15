@@ -1,14 +1,17 @@
 package trackvia.client.examples.tictactoe;
 
 public enum Piece {
-	X("X"),
-	O("O"),
-	EMPTY(" ");
+	X("X", "X"),
+	O("O", "O"),
+	EMPTY(null, " ");
 	
-	protected String representation;
+	protected String trackViaValue;
 	
-	Piece(String representation){
-		this.representation = representation;
+	protected String displayValue;
+	
+	Piece(String trackViaValue, String displayValue){
+		this.trackViaValue = trackViaValue;
+		this.displayValue = displayValue;
 	}
 	
 	public static Piece getPiece(String value) {
@@ -25,6 +28,10 @@ public enum Piece {
 	
 	@Override
 	public String toString() {
-		return representation;
+		return trackViaValue;
+	}
+	
+	public String getDisplayValue() {
+		return displayValue;
 	}
 }
