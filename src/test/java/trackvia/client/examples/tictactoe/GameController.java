@@ -160,7 +160,8 @@ public class GameController {
 		port = Integer.parseInt(config.getProperty("port"));
 		path = config.getProperty("path");
 		
-		TrackviaClient client = TrackviaClient.create(path, scheme, hostName, port, email, password, userKey);
+		TrackviaClient client = TrackviaClient.create(path, scheme, hostName, 
+				port, email, password, userKey);
 		connector = new TrackViaConnector(client);
 	}
 	

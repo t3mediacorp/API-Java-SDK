@@ -71,7 +71,7 @@ public class TrackViaConnector {
 		//set the name in the record
 		RecordData data = new RecordData();
 		data.put("Name", name);
-		data.put("Turn", "X"); //X always goes first
+		data.put("Turn", Piece.X.toString()); //X always goes first
 		
 		//add the record to a record list
 		List<RecordData> recordList = new ArrayList<>(1);
