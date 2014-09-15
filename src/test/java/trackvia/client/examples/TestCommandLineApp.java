@@ -1,10 +1,13 @@
 package trackvia.client.examples;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import trackvia.client.TrackviaClient;
 import trackvia.client.model.Record;
@@ -14,11 +17,13 @@ import trackvia.client.model.RecordSet;
 import trackvia.client.model.View;
 
 public class TestCommandLineApp {
+	
+	public static final String CONFIG_PATH = "src/test/resources/trackvia.config";
 
 	enum MainMenuOptions {EXIT, LIST_VIEWS, LIST_RECORDS, DELETE_RECORD, ADD_RECORD, UPDATE_RECORD};
 	TrackviaClient client  = null;
 
-	public static void main(String[] params) {
+	public static void main(String[] params) throws Exception{
 		TestCommandLineApp app = new TestCommandLineApp();
 		app.initClient();
 
@@ -230,33 +235,34 @@ public class TestCommandLineApp {
 	}
 
 
-	public void initClient() {
+	public void initClient() throws Exception {
 
-		String scheme = "https";
-		String input = readLine("http or (https): ");
-		scheme = input.equals("") ? scheme : input;
-
-		String hostname = "go.trackvia.com";
-		input = readLine("hostname (go.trackvia.com): ");
-		hostname = input.equals("") ? hostname : input;
-
-		String port = "443";
-		input = readLine("port (443): ");
-		port = input.equals("") ? port : input;
-
-		String username = "john.etherton+pre@trackvia.com";
-		input = readLine("username (" + username + "): ");
-		username = input.equals("") ? username : input;
-
-		String password = "password";
-		input = readLine("password (" + password + "): ");
-		password = input.equals("") ? password : input;
+		String email;
+		String userKey;
+		String password;
+		String scheme;
+		String hostName;
+		int port;
+		String path;
 		
-		String apiUserKey = "12345";
-		input = readLine("User key (" + apiUserKey + "): ");
-		apiUserKey = input.equals("") ? apiUserKey : input;
+		Properties config = new Properties();
+		FileInputStream inputStream = null;
+		try {
+			inputStream = new FileInputStream(CONFIG_PATH);
+		} catch (FileNotFoundException e) {
+			throw new FileNotFoundException("Config file ("+ CONFIG_PATH + ") not found. " + 
+					"Did you remember to make a copy from the template file?");
+		}
+		config.load(inputStream);
+		email = config.getProperty("email");
+		userKey = config.getProperty("user_key");
+		password = config.getProperty("password");
+		scheme = config.getProperty("scheme");
+		hostName = config.getProperty("hostname");
+		port = Integer.parseInt(config.getProperty("port"));
+		path = config.getProperty("path");
 
-		client = TrackviaClient.create("/", scheme, hostname, Integer.parseInt(port), username, password, apiUserKey);
+		client = TrackviaClient.create(path, scheme, hostName, port, email, password, userKey);
 	}
 
 	/**
