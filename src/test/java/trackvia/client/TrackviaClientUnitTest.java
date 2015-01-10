@@ -221,8 +221,8 @@ public class TrackviaClientUnitTest {
         Assert.assertEquals(2, rsResponse.getData().size());
 
         for (int i = 0; i < 2; i++) {
-            RecordData rd1 = rs.getData().get(i);
-            RecordData rd2 = rs.getData().get(i);
+            RecordData rd1 = rsResponse.getData().get(i);
+            RecordData rd2 = rsResponse.getData().get(i);
 
             Assert.assertEquals(rd1, rd2);
         }
