@@ -63,6 +63,7 @@ public class TestData {
             private Double revenueCaptured;
             private Long testFile;
             private Date lastContactDate;
+            private Date lastContactDateTime;
 
             public Contact() {}
 
@@ -141,6 +142,14 @@ public class TestData {
             public void setLastContactDate(Date lastContactDate) {
                 this.lastContactDate = lastContactDate;
             }
+            
+            public Date getLastContactDateTime() {
+                return lastContactDateTime;
+            }
+
+            public void setLastContactDateTime(Date lastContactDateTime) {
+                this.lastContactDateTime = lastContactDateTime;
+            }
         }
 
         public static Contact getUnitTestContact1() {
@@ -150,6 +159,7 @@ public class TestData {
             contact.setId(1L);
             contact.setIsCustomer(true);
             contact.setLastContactDate(new Date());
+            contact.setLastContactDateTime(new Date());
             contact.setLocations(Arrays.asList(new String[] { "CA" }));
             contact.setRevenue(100000.0d);
             contact.setRevenueCaptured(10000.0d);
@@ -168,9 +178,11 @@ public class TestData {
                     new FieldMetadata("Revenue", TrackviaDataType.Currency.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("RevenueCaptured", TrackviaDataType.Percentage.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("TestFile", TrackviaDataType.Document.type(), true, false, Collections.<String>emptyList()),
-                    new FieldMetadata("LastContactDate", TrackviaDataType.Date.type(), true, false, Collections.<String>emptyList())
+                    new FieldMetadata("LastContactDate", TrackviaDataType.Date.type(), true, false, Collections.<String>emptyList()),
+                    new FieldMetadata("LastContactDateTime", TrackviaDataType.DateTime.type(), true, false, Collections.<String>emptyList())
             });
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            SimpleDateFormat sdfDateTime = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
             RecordData data = new RecordData();
             data.put(Identifiable.INTERNAL_ID_FIELD_NAME, 1L);
             data.put("ContactName", "James Randall");
@@ -181,6 +193,7 @@ public class TestData {
             data.put("RevenueCaptured", 0.35);
             data.put("TestFile", 222L);
             data.put("LastContactDate", sdf.format(new Date()));
+            data.put("LastContactDateTime", sdfDateTime.format(new Date()));
 
             return new Record(structure, data);
         }
