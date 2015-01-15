@@ -80,10 +80,18 @@ public abstract class DomainRecordDeserializerBase<T> {
                 break;
 
             case Date:
-            case DateTime:
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+            	SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
                 try {
                     value = sdf.parse((String) intermediateValue);
+                } catch (ParseException e) {
+                    throw new JsonParseException(String.format(
+                            "Error converting Trackvia Date value '%s' to java.util.Date", intermediateValue), e);
+                }
+                break;
+            case DateTime:
+                SimpleDateFormat sdfDatetime = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
+                try {
+                    value = sdfDatetime.parse((String) intermediateValue);
                 } catch (ParseException e) {
                     throw new JsonParseException(String.format(
                             "Error converting Trackvia DateTime value '%s' to java.util.Date", intermediateValue), e);
