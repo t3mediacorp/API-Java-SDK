@@ -1,13 +1,23 @@
 package trackvia.client;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.FileBody;
-
-import trackvia.client.model.*;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.http.HttpClientConnection;
 import org.apache.http.HttpEntity;
@@ -26,6 +36,8 @@ import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -33,16 +45,33 @@ import org.apache.http.message.BasicNameValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
+import trackvia.client.model.App;
+import trackvia.client.model.DomainRecord;
+import trackvia.client.model.DomainRecordDataBatch;
+import trackvia.client.model.DomainRecordDataBatchSerializer;
+import trackvia.client.model.DomainRecordDataBatchType;
+import trackvia.client.model.DomainRecordDeserializer;
+import trackvia.client.model.DomainRecordSet;
+import trackvia.client.model.DomainRecordSetDeserializer;
+import trackvia.client.model.DomainRecordSetType;
+import trackvia.client.model.DomainRecordType;
+import trackvia.client.model.Identifiable;
+import trackvia.client.model.OAuth2Token;
+import trackvia.client.model.Record;
+import trackvia.client.model.RecordData;
+import trackvia.client.model.RecordDataBatch;
+import trackvia.client.model.RecordDataDeserializer;
+import trackvia.client.model.RecordDataSerializer;
+import trackvia.client.model.RecordSet;
+import trackvia.client.model.TrackviaSerializationExclusionStrategy;
+import trackvia.client.model.User;
+import trackvia.client.model.UserRecord;
+import trackvia.client.model.UserRecordSet;
+import trackvia.client.model.View;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 /**
  * Trackvia Open API Java client
@@ -298,6 +327,50 @@ public class TrackviaClient {
             final String apiUserKey) throws TrackviaApiException {
         return create(DEFAULT_BASE_URI_PATH, DEFAULT_SCHEME, hostname, DEFAULT_PORT, username, password, apiUserKey);
     }
+    
+    /**
+     * Creates a client, with which to access the Trackvia API.
+     *
+     * Defaults to the HTTPS protocol scheme and port 80.  These can be
+     * overridden using a different constructor.
+     *      
+     * @see #create(String, String, int, String) to override scheme and port
+     *
+     * @param hostname host of the service api endpoint
+     * @param accessToken Trackvia oauth access token
+     * @param apiUserKey 3Scale user key, granted when registering using the Trackvia Developer Portal
+     * @return a client acting on behalf of already authenticated access token
+     * @throws TrackviaApiException if authentication fails for whatever reason
+     */
+    public static TrackviaClient create(final String hostname, final String accessToken, String apiUserKey) {
+    	return create(hostname, accessToken, DEFAULT_BASE_URI_PATH, DEFAULT_SCHEME, DEFAULT_PORT, apiUserKey);
+    }
+    
+    public static TrackviaClient create(final String hostname, final String accessToken, String basePath, String scheme, Integer port, String apiUserKey) {
+        TrackviaClient trackviaClient = new TrackviaClient();
+        trackviaClient.initializeHttpClient();
+        trackviaClient.baseUriPath = basePath;
+        trackviaClient.scheme = scheme;
+        trackviaClient.hostname = hostname;
+        trackviaClient.port = port;
+        trackviaClient.apiUserKey = apiUserKey;
+
+        trackviaClient.recordAsMapGson = new GsonBuilder()
+                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
+                .registerTypeAdapter(RecordData.class, new RecordDataDeserializer())
+                .registerTypeAdapter(RecordData.class, new RecordDataSerializer())
+                .addSerializationExclusionStrategy(new TrackviaSerializationExclusionStrategy())
+                .create();
+
+        OAuth2Token token = new OAuth2Token();
+        token.setAccessToken(accessToken);
+        token.setAccess_token(accessToken);
+        token.setValue(accessToken);
+        trackviaClient.setAuthToken(token);
+        
+        return trackviaClient;
+    }
+
 
     /**
      * Creates a client, with which to access the Trackvia API.
@@ -780,7 +853,8 @@ public class TrackviaClient {
         final Authorized<List<View>> action = new Authorized<>(this);
 
         return action.execute(new Callable<List<View>>() {
-            @Override
+            @SuppressWarnings("unchecked")
+			@Override
             public List<View> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
 
@@ -788,16 +862,20 @@ public class TrackviaClient {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String basePath = String.format("%s/openapi/views", TrackviaClient.this.baseUriPath);
-                        final String path = (optionalName == null || optionalName.isEmpty()) ? (basePath) :
-                                (String.format("%s?name=%s", basePath, optionalName));
-                        return new URIBuilder()
-                                .setScheme(TrackviaClient.this.scheme)
+                        URIBuilder builder = new URIBuilder();
+                        
+                        builder.setScheme(TrackviaClient.this.scheme)
                                 .setHost(TrackviaClient.this.hostname)
                                 .setPort(TrackviaClient.this.port)
-                                .setPath(path)
+                                .setPath(basePath)
                                 .setParameter(ACCESS_TOKEN_QUERY_PARAM, TrackviaClient.this.getAccessToken())
-                                .setParameter(USER_KEY_QUERY_PARAM, TrackviaClient.this.getApiUserKey())
-                                .build();
+                                .setParameter(USER_KEY_QUERY_PARAM, TrackviaClient.this.getApiUserKey());
+              
+                        if (optionalName != null && !optionalName.isEmpty()) {
+                        	builder.setParameter("name", optionalName);
+                        }
+                        
+                        return builder.build();
                     }
 
                     @Override
