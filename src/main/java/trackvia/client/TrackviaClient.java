@@ -578,7 +578,7 @@ public class TrackviaClient {
                         .setPort(TrackviaClient.this.port)
                         .setPath(path)
                         .setParameter("refresh_token", getRefreshToken())
-                        .setParameter("client_id", "xvia-webapp")
+                        .setParameter("client_id", "TrackViaAPI")
                         .setParameter("grant_type", "refresh_token")
                         .setParameter("redirect_uri", "")
                         .build();
