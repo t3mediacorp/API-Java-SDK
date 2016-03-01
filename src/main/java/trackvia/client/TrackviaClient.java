@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -45,6 +46,10 @@ import org.apache.http.message.BasicNameValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+
 import trackvia.client.model.App;
 import trackvia.client.model.DomainRecord;
 import trackvia.client.model.DomainRecordDataBatch;
@@ -68,10 +73,6 @@ import trackvia.client.model.User;
 import trackvia.client.model.UserRecord;
 import trackvia.client.model.UserRecordSet;
 import trackvia.client.model.View;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 
 /**
  * Trackvia Open API Java client
@@ -1313,6 +1314,20 @@ public class TrackviaClient {
             }
         });
     }
+    
+    /**
+     * Helper method for when you want to create just one record
+     * @param viewId
+     * @param data
+     * @return
+     */
+    public RecordData createRecord(long viewId, RecordData data){
+    	RecordDataBatch batch = new RecordDataBatch();
+    	LinkedList<RecordData> list = new LinkedList<RecordData>();
+    	list.add(data);
+    	batch.setData(list);
+    	return createRecords(viewId, batch).getData().get(0);
+    }
 
     /**
      * Creates a batch of records in a view accessible to the authenticated user.
@@ -1329,7 +1344,7 @@ public class TrackviaClient {
      * application-defined value objects
      * @see trackvia.client.model.RecordData for the Map<String, Object> return type
      */
-    public RecordSet createRecords(final int viewId, final RecordDataBatch batch)
+    public RecordSet createRecords(final long viewId, final RecordDataBatch batch)
             throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final Authorized<RecordSet> action = new Authorized<>(this);
