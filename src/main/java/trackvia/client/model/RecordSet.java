@@ -56,4 +56,12 @@ public class RecordSet {
     public void setTotalCount(int totalCount) {
         this.totalCount = totalCount;
     }
+    
+    public RecordData get(int index){
+    	return data.get(index);
+    }
+    
+    public void add(RecordData recordData){
+    	data.add(recordData);
+    }
 }
