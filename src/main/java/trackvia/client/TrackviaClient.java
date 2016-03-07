@@ -1,6 +1,7 @@
 package trackvia.client;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
@@ -39,6 +40,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.entity.mime.content.InputStreamBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -1683,6 +1685,60 @@ public class TrackviaClient {
                         return MultipartEntityBuilder.create()
                                 .addPart("file", new FileBody(filePath.toFile()))
                                 .build();
+                    }
+                });
+            }
+        });
+    }
+    
+    
+    
+    /**
+     * Adds a file to a record in the view of the authenticated user.
+     * Uses an input stream as the file source
+     *
+     * @param viewId view identifier in which to modify the record
+     * @param recordId unique record identifier
+     * @param fileName name of the file (named like the corresponding Trackvia "column")
+     * @param inputStream The input stream where the file data is located
+     * @return updated {@link trackvia.client.model.Record}, including the file's identifier
+     * @throws TrackviaApiException if the service fails to process this request
+     * @throws TrackviaClientException if an error occurs outside the service, failing the request
+     *
+     */
+    public Record addFile(final int viewId, final long recordId, final String fileName, final String inputFileName, final InputStream inputStream)
+            throws TrackviaApiException, TrackviaClientException {
+        final Gson gson = this.recordAsMapGson;
+        final Authorized<Record> action = new Authorized<>(this);
+        return action.execute(new Callable<Record>() {
+            @Override
+            public Record call() throws Exception {
+                HttpClientContext context = HttpClientContext.create();
+                return (Record) execute(new CommandOverHttpPost<Record>(context) {
+                    @Override
+                    public URI getApiRequestUri() throws URISyntaxException {
+                        final String path = String.format("%s/openapi/views/%d/records/%d/files/%s",
+                                TrackviaClient.this.baseUriPath, viewId, recordId, fileName);
+                        return new URIBuilder()
+                                .setScheme(TrackviaClient.this.scheme)
+                                .setHost(TrackviaClient.this.hostname)
+                                .setPort(TrackviaClient.this.port)
+                                .setPath(path)
+                                .setParameter(ACCESS_TOKEN_QUERY_PARAM, TrackviaClient.this.getAccessToken())
+                                .setParameter(USER_KEY_QUERY_PARAM, TrackviaClient.this.getApiUserKey())
+                                .build();
+                    }
+
+                    @Override
+                    public Record processResponseEntity(final HttpEntity entity) throws IOException {
+                        Reader jsonReader = new InputStreamReader(entity.getContent());
+
+                        return gson.fromJson(jsonReader, Record.class);
+                    }
+
+                    @Override
+                    public HttpEntity getApiRequestEntity() throws UnsupportedEncodingException {
+                    	return MultipartEntityBuilder.create().addBinaryBody("file", inputStream, ContentType.DEFAULT_BINARY, inputFileName).build();
                     }
                 });
             }
