@@ -14,11 +14,12 @@ public class Authorized<V> {
     public V execute(final Callable<V> callable) {
         boolean tryExecute = true;
         boolean tryOnceTokenRefresh = false;
+        boolean tryOnceVersionMisMatch = false;
         V result = null;
 
         while (tryExecute) {
             try {
-                if (tryOnceTokenRefresh) client.refreshAccessToken();
+                if (tryOnceTokenRefresh || tryOnceVersionMisMatch) client.refreshAccessToken();
 
                 result = callable.call();
 
@@ -27,6 +28,9 @@ public class Authorized<V> {
                 ApiError err = e.getApiError();
                 if ((err == ApiError.InvalidGrant || err == ApiError.InvalidToken) && !tryOnceTokenRefresh) {
                     tryOnceTokenRefresh = true;
+                } else if(err.code().equals(ApiError.VersionMisMatch.code()) && !tryOnceVersionMisMatch){
+                	tryOnceVersionMisMatch = true;
+                	
                 } else {
                     throw e;
                 }

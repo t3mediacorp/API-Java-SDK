@@ -1,9 +1,11 @@
 package trackvia.client;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import org.apache.http.HttpEntity;
-import trackvia.client.model.*;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -12,31 +14,17 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.lang.reflect.Type;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.List;
-
-public abstract class CommandOverHttpGet<T> implements OverHttpCommand <T> {
+public abstract class CommandOverHttpGet<T> extends OverHttpCommand <T> {
     private static Logger LOG = LoggerFactory.getLogger(CommandOverHttpGet.class);
 
-    private HttpClientContext context;
-    private Gson gson;
+    
+    
 
-    public CommandOverHttpGet(final HttpClientContext context) {
-        this.context = context;
-        this.gson = new GsonBuilder()
-                .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
-                .registerTypeAdapter(RecordData.class, new RecordDataDeserializer())
-                .create();
+    public CommandOverHttpGet(final HttpClientContext context, TrackviaClient client) {
+       super(context, client);
     }
 
-    public abstract URI getApiRequestUri() throws URISyntaxException;
-    public abstract T processResponseEntity(final HttpEntity entity) throws IOException;
+    
 
     @Override
     public HttpClientContext getContext() {
@@ -53,19 +41,11 @@ public abstract class CommandOverHttpGet<T> implements OverHttpCommand <T> {
         try {
             URI uri = getApiRequestUri();
             HttpGet request = new HttpGet(uri);
+            setHeaders(request);
             response = client.execute(request);
-            if (ValidResponseCodes.contains(response.getStatusLine().getStatusCode())) {
-                result = processResponseEntity(response.getEntity());
-
-                LOG.debug("{} api response: {}", uri.getPath(), (result == null) ? ("none") : (result.toString()));
-            } else {
-                Reader jsonReader = new InputStreamReader(response.getEntity().getContent());
-                ApiErrorResponse apiError = gson.fromJson(jsonReader, ApiErrorResponse.class);
-
-                LOG.debug("{} api error: {}", uri.getPath(), apiError.toString());
-
-                throw new TrackviaApiException(apiError);
-            }
+            
+            result = handleResponse(client, request, ValidResponseCodes, response, uri, LOG);
+            
         } catch (URISyntaxException | IOException e) {
             throw new TrackviaClientException(e);
         } finally {
