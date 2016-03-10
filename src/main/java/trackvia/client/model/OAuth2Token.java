@@ -15,6 +15,7 @@ public class OAuth2Token {
     private String access_token;
     private String accessToken;
     private String refresh_token;
+    private String apiVersion;
 
     public OAuth2Token() {}
 
@@ -97,8 +98,18 @@ public class OAuth2Token {
     public void setRefresh_token(String refresh_token) {
         this.refresh_token = refresh_token;
     }
+    
+    
 
-    @Override
+    public String getApiVersion() {
+		return apiVersion;
+	}
+
+	public void setApiVersion(String apiVersion) {
+		this.apiVersion = apiVersion;
+	}
+
+	@Override
     public boolean equals(Object o) {
         if (o == null) return false;
         if (!(o instanceof OAuth2Token)) return false;

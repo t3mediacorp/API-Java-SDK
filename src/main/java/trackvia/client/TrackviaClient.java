@@ -297,6 +297,7 @@ public class TrackviaClient {
 
     protected static final String ACCESS_TOKEN_QUERY_PARAM = "access_token";
     protected static final String USER_KEY_QUERY_PARAM = "user_key";
+    protected static final String API_VERSION_HEADER = "api-version";
     
     private CloseableHttpClient httpClient;
     private HttpClientConnectionManager connectionManager;
@@ -543,6 +544,14 @@ public class TrackviaClient {
     protected synchronized void setAuthToken(OAuth2Token token) {
         this.lastGoodToken = token;
     }
+    
+    public synchronized void updateApiVersion(String apiVersion) {
+        if(lastGoodToken == null){
+        	return;
+        }
+        lastGoodToken.setApiVersion(apiVersion);
+        
+    }
 
     protected synchronized String getAccessToken() {
         return (this.lastGoodToken != null) ? (this.lastGoodToken.getValue()) : (null);
@@ -551,6 +560,18 @@ public class TrackviaClient {
     protected synchronized String getRefreshToken() {
         return (this.lastGoodToken != null && this.lastGoodToken.getRefreshToken() != null) ?
                 (this.lastGoodToken.getRefreshToken().getValue()) : (null);
+    }
+    
+    /**
+     * Grab the api version as a string, else gets negative
+     * @return
+     */
+    protected synchronized String getApiVersion(){
+    	if(this.lastGoodToken != null && this.lastGoodToken.getApiVersion() != null){
+    		return lastGoodToken.getApiVersion();
+    	} else {
+    		return null;
+    	}
     }
 
     /**
@@ -571,7 +592,7 @@ public class TrackviaClient {
     public void refreshAccessToken() throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         final HttpClientContext context = HttpClientContext.create();
-        final OAuth2Token token = (OAuth2Token) execute(new CommandOverHttpGet<OAuth2Token>(context) {
+        final OAuth2Token token = (OAuth2Token) execute(new CommandOverHttpGet<OAuth2Token>(context, TrackviaClient.this) {
             @Override
             public URI getApiRequestUri() throws URISyntaxException {
                 final String path = String.format("%s/oauth/token", TrackviaClient.this.baseUriPath);
@@ -612,7 +633,7 @@ public class TrackviaClient {
     public void authorize(final String username, final String password) throws TrackviaApiException, TrackviaClientException {
         final Gson gson = this.recordAsMapGson;
         HttpClientContext context = HttpClientContext.create();
-        OAuth2Token token = (OAuth2Token) execute(new CommandOverHttpGet<OAuth2Token>(context) {
+        OAuth2Token token = (OAuth2Token) execute(new CommandOverHttpGet<OAuth2Token>(context, TrackviaClient.this) {
             @Override
             public URI getApiRequestUri() throws URISyntaxException {
                 final String path = String.format("%s/oauth/token", TrackviaClient.this.baseUriPath);
@@ -655,7 +676,7 @@ public class TrackviaClient {
             @Override
             public UserRecordSet call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (UserRecordSet) execute(new CommandOverHttpGet<UserRecordSet>(context) {
+                return (UserRecordSet) execute(new CommandOverHttpGet<UserRecordSet>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final List<NameValuePair> params = pairsFromGetUsersParams(start, max);
@@ -741,7 +762,7 @@ public class TrackviaClient {
             public UserRecord call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
 
-                return (UserRecord) execute(new CommandOverHttpPost<UserRecord>(context) {
+                return (UserRecord) execute(new CommandOverHttpPost<UserRecord>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/users", TrackviaClient.this.baseUriPath);
@@ -795,7 +816,7 @@ public class TrackviaClient {
             public List<App> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
 
-                return (List<App>) execute(new CommandOverHttpGet<List<App>>(context) {
+                return (List<App>) execute(new CommandOverHttpGet<List<App>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/apps", TrackviaClient.this.baseUriPath);
@@ -861,7 +882,7 @@ public class TrackviaClient {
             public List<View> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
 
-                return (List<View>) execute(new CommandOverHttpGet<List<View>>(context) {
+                return (List<View>) execute(new CommandOverHttpGet<List<View>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String basePath = String.format("%s/openapi/views", TrackviaClient.this.baseUriPath);
@@ -937,7 +958,7 @@ public class TrackviaClient {
             @Override
             public DomainRecordSet<T> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (DomainRecordSet<T>) execute(new CommandOverHttpGet<DomainRecordSet<T>>(context) {
+                return (DomainRecordSet<T>) execute(new CommandOverHttpGet<DomainRecordSet<T>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final List<NameValuePair> params = pairsFromFindRecordParams(q, start, max);
@@ -1003,7 +1024,7 @@ public class TrackviaClient {
             @Override
             public RecordSet call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (RecordSet) execute(new CommandOverHttpGet<RecordSet>(context) {
+                return (RecordSet) execute(new CommandOverHttpGet<RecordSet>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final List<NameValuePair> params = pairsFromFindRecordParams(q, start, max);
@@ -1090,7 +1111,7 @@ public class TrackviaClient {
             @Override
             public DomainRecordSet<T> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (DomainRecordSet<T>) execute(new CommandOverHttpGet<DomainRecordSet<T>>(context) {
+                return (DomainRecordSet<T>) execute(new CommandOverHttpGet<DomainRecordSet<T>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d", TrackviaClient.this.baseUriPath, viewId);
@@ -1135,7 +1156,7 @@ public class TrackviaClient {
             @Override
             public RecordSet call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (RecordSet) execute(new CommandOverHttpGet<RecordSet>(context) {
+                return (RecordSet) execute(new CommandOverHttpGet<RecordSet>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d", TrackviaClient.this.baseUriPath, viewId);
@@ -1183,7 +1204,7 @@ public class TrackviaClient {
             @Override
             public DomainRecord<T> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (DomainRecord<T>) execute(new CommandOverHttpGet<DomainRecord<T>>(context) {
+                return (DomainRecord<T>) execute(new CommandOverHttpGet<DomainRecord<T>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d", TrackviaClient.this.baseUriPath,
@@ -1229,7 +1250,7 @@ public class TrackviaClient {
             @Override
             public Record call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (Record) execute(new CommandOverHttpGet<Record>(context) {
+                return (Record) execute(new CommandOverHttpGet<Record>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d", TrackviaClient.this.baseUriPath,
@@ -1287,7 +1308,7 @@ public class TrackviaClient {
             @Override
             public DomainRecordSet<T> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (DomainRecordSet<T>) execute(new CommandOverHttpPost<DomainRecordSet<T>>(context) {
+                return (DomainRecordSet<T>) execute(new CommandOverHttpPost<DomainRecordSet<T>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records", TrackviaClient.this.baseUriPath, viewId);
@@ -1355,7 +1376,7 @@ public class TrackviaClient {
             @Override
             public RecordSet call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (RecordSet) execute(new CommandOverHttpPost<RecordSet>(context) {
+                return (RecordSet) execute(new CommandOverHttpPost<RecordSet>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records", TrackviaClient.this.baseUriPath, viewId);
@@ -1419,7 +1440,7 @@ public class TrackviaClient {
             @Override
             public DomainRecordSet<T> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (DomainRecordSet<T>) execute(new CommandOverHttpPut<DomainRecordSet<T>>(context) {
+                return (DomainRecordSet<T>) execute(new CommandOverHttpPut<DomainRecordSet<T>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%s", TrackviaClient.this.baseUriPath,
@@ -1488,7 +1509,7 @@ public class TrackviaClient {
             @Override
             public RecordSet call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (RecordSet) execute(new CommandOverHttpPut<RecordSet>(context) {
+                return (RecordSet) execute(new CommandOverHttpPut<RecordSet>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%s", TrackviaClient.this.baseUriPath,
@@ -1560,7 +1581,7 @@ public class TrackviaClient {
             @Override
             public Void call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                execute(new CommandOverHttpDelete<Void>(context) {
+                execute(new CommandOverHttpDelete<Void>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d", TrackviaClient.this.baseUriPath,
@@ -1574,6 +1595,12 @@ public class TrackviaClient {
                                 .setParameter(USER_KEY_QUERY_PARAM, TrackviaClient.this.getApiUserKey())
                                 .build();
                     }
+
+					@Override
+					public Void processResponseEntity(HttpEntity entity) throws IOException {
+						// no-op
+						return null;
+					}
                 });
                 return null;
             }
@@ -1605,7 +1632,7 @@ public class TrackviaClient {
             @Override
             public DomainRecord<T> call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (DomainRecord<T>) execute(new CommandOverHttpPost<DomainRecord<T>>(context) {
+                return (DomainRecord<T>) execute(new CommandOverHttpPost<DomainRecord<T>>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d/files/%s",
@@ -1658,7 +1685,7 @@ public class TrackviaClient {
             @Override
             public Record call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (Record) execute(new CommandOverHttpPost<Record>(context) {
+                return (Record) execute(new CommandOverHttpPost<Record>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d/files/%s",
@@ -1714,7 +1741,7 @@ public class TrackviaClient {
             @Override
             public Record call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                return (Record) execute(new CommandOverHttpPost<Record>(context) {
+                return (Record) execute(new CommandOverHttpPost<Record>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d/files/%s",
@@ -1770,7 +1797,7 @@ public class TrackviaClient {
                     throw new TrackviaClientException(String.format("Will not overwrite the file %s; aborting", filePath.toString()));
                 }
 
-                execute(new CommandOverHttpGet<Void>(context) {
+                execute(new CommandOverHttpGet<Void>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d/files/%s",
@@ -1815,7 +1842,7 @@ public class TrackviaClient {
             @Override
             public Void call() throws Exception {
                 HttpClientContext context = HttpClientContext.create();
-                execute(new CommandOverHttpDelete<Void>(context) {
+                execute(new CommandOverHttpDelete<Void>(context, TrackviaClient.this) {
                     @Override
                     public URI getApiRequestUri() throws URISyntaxException {
                         final String path = String.format("%s/openapi/views/%d/records/%d/files/%s",
@@ -1829,6 +1856,12 @@ public class TrackviaClient {
                                 .setParameter(USER_KEY_QUERY_PARAM, TrackviaClient.this.getApiUserKey())
                                 .build();
                     }
+
+					@Override
+					public Void processResponseEntity(HttpEntity entity) throws IOException {
+						//no-op
+						return null;
+					}
                 });
 
                 return null;

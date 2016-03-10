@@ -5,7 +5,8 @@ import java.util.Map;
 
 public enum ApiError {
     InvalidGrant("invalid_grant", "Invalid authorization grant"),
-    InvalidToken("invalid_token", "Invalid access or refresh token");
+    InvalidToken("invalid_token", "Invalid access or refresh token"),
+	VersionMisMatch("version_mismatch", "requested version and api version don't match");
 
     private static Map<String, ApiError> lookupTable = new HashMap<String, ApiError>();
 
