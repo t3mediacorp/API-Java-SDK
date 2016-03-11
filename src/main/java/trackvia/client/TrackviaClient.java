@@ -310,7 +310,7 @@ public class TrackviaClient {
     private Gson recordAsMapGson;
     private Map<String, Gson> typeToGsonCache = new HashMap<String, Gson>();
 
-    private TrackviaClient() {}
+    public TrackviaClient() {}
 
     /**
      * Creates a client, with which to access the Trackvia API.
