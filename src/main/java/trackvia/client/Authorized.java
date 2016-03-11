@@ -28,12 +28,8 @@ public class Authorized<V> {
                 ApiError err = e.getApiError();
                 if ((err == ApiError.InvalidGrant || err == ApiError.InvalidToken) && !tryOnceTokenRefresh) {
                     tryOnceTokenRefresh = true;
-                } else if(err != null 
-                		&& err.code() != null 
-                		&& err.code().equals(ApiError.VersionMisMatch.code()) 
-                		&& !tryOnceVersionMisMatch){
+                } else if(err == ApiError.VersionMisMatch  && !tryOnceVersionMisMatch){
                 	tryOnceVersionMisMatch = true;
-                	
                 } else {
                     throw e;
                 }
