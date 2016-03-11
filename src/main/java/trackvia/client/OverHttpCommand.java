@@ -79,6 +79,12 @@ public abstract class OverHttpCommand<T> {
             Reader jsonReader = new InputStreamReader(response.getEntity().getContent());
             ApiErrorResponse apiError = gson.fromJson(jsonReader, ApiErrorResponse.class);
 
+            if(apiError == null){
+            	apiError = new ApiErrorResponse();
+            	apiError.setCode(response.getStatusLine().getStatusCode()+"");
+            	apiError.setError(response.getStatusLine().getStatusCode()+"");
+            	apiError.setMessage(response.getStatusLine().getReasonPhrase());
+            }
             log.debug("{} api error: {}", uri.getPath(), apiError.toString());
 
             throw new TrackviaApiException(apiError);
