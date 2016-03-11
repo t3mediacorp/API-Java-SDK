@@ -301,16 +301,16 @@ public class TrackviaClient {
     
     private CloseableHttpClient httpClient;
     private HttpClientConnectionManager connectionManager;
-    private String baseUriPath;
-    private String scheme = DEFAULT_SCHEME;
-    private String hostname;
-    private String apiUserKey;
-    private int port = DEFAULT_PORT;
+    protected String baseUriPath;
+    protected String scheme = DEFAULT_SCHEME;
+    protected String hostname;
+    protected String apiUserKey;
+    protected int port = DEFAULT_PORT;
     private OAuth2Token lastGoodToken;
-    private Gson recordAsMapGson;
+    protected Gson recordAsMapGson;
     private Map<String, Gson> typeToGsonCache = new HashMap<String, Gson>();
 
-    public TrackviaClient() {}
+    protected TrackviaClient() {}
 
     /**
      * Creates a client, with which to access the Trackvia API.
