@@ -1,8 +1,10 @@
 package trackvia.client;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -17,6 +19,7 @@ import org.slf4j.Logger;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 
 import trackvia.client.model.ApiError;
 import trackvia.client.model.ApiErrorResponse;
@@ -56,6 +59,26 @@ public abstract class OverHttpCommand<T> {
     	request.setHeader(TrackviaClient.API_VERSION_HEADER, tvClient.getApiVersion());
     }
     
+    public static String slurp(final InputStream is, final int bufferSize) {
+        final char[] buffer = new char[bufferSize];
+        final StringBuilder out = new StringBuilder();
+        try (Reader in = new InputStreamReader(is, "UTF-8")) {
+            for (;;) {
+                int rsz = in.read(buffer, 0, buffer.length);
+                if (rsz < 0)
+                    break;
+                out.append(buffer, 0, rsz);
+            }
+        }
+        catch (UnsupportedEncodingException ex) {
+            /* ... */
+        }
+        catch (IOException ex) {
+            /* ... */
+        }
+        return out.toString();
+    }
+    
     /**
      * Handle the response from a HTTP request
      * @param validResponseCodes
@@ -77,7 +100,24 @@ public abstract class OverHttpCommand<T> {
         	
         } else {
             Reader jsonReader = new InputStreamReader(response.getEntity().getContent());
-            ApiErrorResponse apiError = gson.fromJson(jsonReader, ApiErrorResponse.class);
+            ApiErrorResponse apiError = null;
+            try{
+            	apiError = gson.fromJson(jsonReader, ApiErrorResponse.class);
+            } catch(JsonSyntaxException badJson){
+            	try{
+            		String errorStr = slurp(response.getEntity().getContent(), 1024);
+            		apiError = new ApiErrorResponse();
+            		apiError.setMessage(errorStr);
+            		apiError.setError(errorStr);
+            		throw new TrackviaApiException(apiError);
+            	} catch (Throwable t){
+            		String whatWentWrong = "Something went wrong with an unknown error type: " + t.getMessage();
+            		apiError = new ApiErrorResponse();
+            		apiError.setMessage(whatWentWrong);
+            		apiError.setError(whatWentWrong);
+            		throw new TrackviaApiException(apiError);
+            	}
+            }
 
             if(apiError == null){
             	apiError = new ApiErrorResponse();
