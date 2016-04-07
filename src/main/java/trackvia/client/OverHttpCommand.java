@@ -1,5 +1,6 @@
 package trackvia.client;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -59,22 +60,22 @@ public abstract class OverHttpCommand<T> {
     	request.setHeader(TrackviaClient.API_VERSION_HEADER, tvClient.getApiVersion());
     }
     
-    public static String slurp(final InputStream is, final int bufferSize) {
-        final char[] buffer = new char[bufferSize];
+    /**
+     * Suck in a stream and turn it into a string
+     * @param reader
+     * @return
+     */
+    public static String slurp(final BufferedReader reader) {
+        
         final StringBuilder out = new StringBuilder();
-        try (Reader in = new InputStreamReader(is, "UTF-8")) {
-            for (;;) {
-                int rsz = in.read(buffer, 0, buffer.length);
-                if (rsz < 0)
-                    break;
-                out.append(buffer, 0, rsz);
-            }
-        }
-        catch (UnsupportedEncodingException ex) {
-            /* ... */
-        }
-        catch (IOException ex) {
-            /* ... */
+        String line;
+        try{
+	        while((line = reader.readLine()) != null){
+	        	out.append(line);
+	        	out.append("\n");
+	        }
+        } catch (IOException ex) {
+        	out.append(ex.getMessage());
         }
         return out.toString();
     }
@@ -90,31 +91,38 @@ public abstract class OverHttpCommand<T> {
      */
     protected T handleResponse(CloseableHttpClient client, HttpRequestBase request, List<Integer> validResponseCodes, CloseableHttpResponse response, URI uri, Logger log) throws IOException{
     	T result = null;
-    	if (validResponseCodes.contains(response.getStatusLine().getStatusCode())) {
+    	int statusCode = response.getStatusLine().getStatusCode();
+    	String badJsonStr = "Nothing went wrong first. This should never happen";
+    	if (validResponseCodes.contains(statusCode)) {
     		result = processResponseEntity(response.getEntity());
     		log.debug("{} api response: {}", uri.getPath(), (result == null) ? ("none") : (result.toString()));
         } else if(response.getStatusLine().getStatusCode() == HttpStatus.SC_GONE){
         	ApiErrorResponse apiError = new ApiErrorResponse();
         	apiError.setError(ApiError.VersionMisMatch.code());
-        	throw new TrackviaApiException(apiError);
-        	
+        	throw new TrackviaApiException(apiError);   	
         } else {
-            Reader jsonReader = new InputStreamReader(response.getEntity().getContent());
+        	BufferedReader jsonReader = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+            //mark the start incase it's an error and we can't read it
+        	//errors should never be huge so hard code limit to 100k, we should never pass this.
+        	jsonReader.mark(1024*1024);
             ApiErrorResponse apiError = null;
             try{
             	apiError = gson.fromJson(jsonReader, ApiErrorResponse.class);
             } catch(JsonSyntaxException badJson){
             	try{
-            		String errorStr = slurp(response.getEntity().getContent(), 1024);
+            		badJsonStr = badJson.toString();
+            		jsonReader.reset();
+            		String errorStr = slurp(jsonReader);
             		apiError = new ApiErrorResponse();
-            		apiError.setMessage(errorStr);
-            		apiError.setError(errorStr);
+            		apiError.setMessage("Error code: " + statusCode + " " + errorStr);
+            		apiError.setError("Error code: " + statusCode + " " + errorStr);
             		throw new TrackviaApiException(apiError);
-            	} catch (Throwable t){
+            	} catch (Exception t){
             		String whatWentWrong = "Something went wrong with an unknown error type: " + t.getMessage();
             		apiError = new ApiErrorResponse();
-            		apiError.setMessage(whatWentWrong);
-            		apiError.setError(whatWentWrong);
+            		String errorStr = "Error code: " + statusCode + " --- " + whatWentWrong + "\nFirst thing that went wrong: " + badJsonStr;
+            		apiError.setMessage(errorStr);
+            		apiError.setError(errorStr);
             		throw new TrackviaApiException(apiError);
             	}
             }
