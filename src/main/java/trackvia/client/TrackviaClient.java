@@ -735,7 +735,7 @@ public class TrackviaClient {
                 return "max";
             }
             @Override public String getValue() {
-                return (max < start) ? ("50") : (max > 100) ? ("100") : (String.valueOf(max));
+                return (max < 0) ? ("0") : (String.valueOf(max));
             }
         });
 
