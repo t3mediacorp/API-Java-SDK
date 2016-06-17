@@ -76,6 +76,7 @@ public abstract class DomainRecordDeserializerBase<T> {
             case Document:
             case Image:
             case URL:
+            case Point:
                 value = intermediateValue;
                 break;
 
@@ -131,8 +132,7 @@ public abstract class DomainRecordDeserializerBase<T> {
         } else if (jsonElement.isJsonArray()) {
             result = deserialize(jsonElement.getAsJsonArray());
         } else {
-
-            throw new IllegalArgumentException("JSON Object deserialization is unsupported");
+        	result = deserialize(jsonElement.getAsJsonObject());
         }
 
         return result;
@@ -165,6 +165,12 @@ public abstract class DomainRecordDeserializerBase<T> {
         for (JsonElement jsonElement : jsonArray) {
             result.add(deserialize(jsonElement));
         }
+
+        return result;
+    }
+    
+    protected Object deserialize(JsonObject jsonObject) {
+    	Point result = new Point(jsonObject.get("latitude").getAsDouble(), jsonObject.get("longitude").getAsDouble());
 
         return result;
     }

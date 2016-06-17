@@ -2,6 +2,7 @@ package trackvia.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
 import org.apache.http.*;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -14,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
+
 import trackvia.client.model.*;
 
 import java.io.ByteArrayInputStream;
@@ -24,7 +26,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static trackvia.client.TestData.*;
-
 import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -511,5 +512,55 @@ public class TrackviaClientUnitTest {
         when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_NO_CONTENT);
 
         client.deleteFile(1, 1, "Test File");
+    }
+    
+    @Test
+    public void testGetRecordWithPoint() throws Exception {
+    	Record record = Unit.getUnitTestRecord1();
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(record).getBytes());
+
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        Record recordResponse = client.getRecord(1, 1);
+
+        Assert.assertNotNull(recordResponse);
+        
+        Point testPoint = (Point) record.getData().get("TestPoint");
+        Assert.assertEquals(testPoint, recordResponse.getData().get("TestPoint"));
+    }
+    
+    @Test
+    public void testCreateRecordWithPoint() throws Exception {
+    	RecordSet rs = Unit.getUnitTestRecordSet4();
+        RecordDataBatch batch = new RecordDataBatch(rs.getData());
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(rs).getBytes());
+
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_CREATED);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        RecordSet rsResponse = client.createRecords(1, batch);
+
+        Assert.assertNotNull(rsResponse);
+        Assert.assertEquals(1, rsResponse.getTotalCount());
+        Assert.assertEquals(1, rsResponse.getData().size());
+    }
+    
+    @Test
+    public void testUpdateRecordWithPoint() throws Exception {
+        RecordSet rs = Unit.getUnitTestRecordSet4();
+        ByteArrayInputStream contentInputStream = new ByteArrayInputStream(
+                gson.toJson(rs).getBytes());
+
+        // Form a valid http response with the expected json response body
+        when(statusLine.getStatusCode()).thenReturn(HttpStatus.SC_OK);
+        when(responseEntity.getContent()).thenReturn(contentInputStream);
+
+        Record updateResponse = client.updateRecord(1, 1, rs.getData().get(0));
+
+        Assert.assertNotNull(updateResponse);
+        Assert.assertEquals(rs.getData().get(0), updateResponse.getData());
     }
 }
