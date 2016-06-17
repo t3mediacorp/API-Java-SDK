@@ -1080,7 +1080,7 @@ public class TrackviaClient {
 
         pairs.add(new NameValuePair() {
             @Override public String getName() { return "max"; }
-            @Override public String getValue() { return (max < start) ? ("50") : (max > 100) ? ("100") : (String.valueOf(max)); }
+            @Override public String getValue() { return (max < 0) ? ("0") : (String.valueOf(max)); }
         });
 
         return pairs;
