@@ -64,6 +64,7 @@ public class TestData {
             private Long testFile;
             private Date lastContactDate;
             private Date lastContactDateTime;
+            private Point testPoint;
 
             public Contact() {}
 
@@ -150,6 +151,14 @@ public class TestData {
             public void setLastContactDateTime(Date lastContactDateTime) {
                 this.lastContactDateTime = lastContactDateTime;
             }
+
+			public Point getTestPoint() {
+				return testPoint;
+			}
+
+			public void setTestPoint(Point testPoint) {
+				this.testPoint = testPoint;
+			}
         }
 
         public static Contact getUnitTestContact1() {
@@ -179,7 +188,8 @@ public class TestData {
                     new FieldMetadata("RevenueCaptured", TrackviaDataType.Percentage.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("TestFile", TrackviaDataType.Document.type(), true, false, Collections.<String>emptyList()),
                     new FieldMetadata("LastContactDate", TrackviaDataType.Date.type(), true, false, Collections.<String>emptyList()),
-                    new FieldMetadata("LastContactDateTime", TrackviaDataType.DateTime.type(), true, false, Collections.<String>emptyList())
+                    new FieldMetadata("LastContactDateTime", TrackviaDataType.DateTime.type(), true, false, Collections.<String>emptyList()),
+                    new FieldMetadata("TestPoint", TrackviaDataType.Point.type(), false, false, Collections.<String>emptyList())                 
             });
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             SimpleDateFormat sdfDateTime = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
@@ -194,6 +204,7 @@ public class TestData {
             data.put("TestFile", 222L);
             data.put("LastContactDate", sdf.format(new Date()));
             data.put("LastContactDateTime", sdfDateTime.format(new Date()));
+            data.put("TestPoint", new Point(39.7501158, -104.9989422));
 
             return new Record(structure, data);
         }
@@ -269,6 +280,18 @@ public class TestData {
             rs.setTotalCount(1);
 
             return rs;
+        }
+        
+        public static RecordSet getUnitTestRecordSet4() {
+        	List<FieldMetadata> structure = Arrays.asList(new FieldMetadata[]{
+                    new FieldMetadata(Identifiable.INTERNAL_ID_FIELD_NAME, TrackviaDataType.Number.type(), true, false, Collections.<String>emptyList()),
+                    new FieldMetadata("TestPoint", TrackviaDataType.Point.type(), true, false, Collections.<String>emptyList())});
+            List<RecordData> data = Arrays.asList(new RecordData[]{new RecordData()});
+
+            data.get(0).put(Identifiable.INTERNAL_ID_FIELD_NAME, 1L);
+            data.get(0).put("TestPoint", new Point(39.7501158, -104.9989422));
+            
+            return new RecordSet(structure, data, 1);
         }
     }
 }

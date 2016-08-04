@@ -1,12 +1,21 @@
 package trackvia.client.model;
 
-import com.google.gson.*;
-
 import java.lang.reflect.Type;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
 
 /**
  *
@@ -36,6 +45,7 @@ import java.util.*;
  *      Document("document")                    Long
  *      Image("image")                          Long
  *      URL("url")                              String
+ *      Point("point")                          trackvia.client.model.Point
  */
 
 public class RecordDataDeserializer implements JsonDeserializer<RecordData> {
@@ -67,8 +77,7 @@ public class RecordDataDeserializer implements JsonDeserializer<RecordData> {
         } else if (jsonElement.isJsonArray()) {
             result = deserialize(jsonElement.getAsJsonArray());
         } else {
-
-            throw new IllegalArgumentException("JSON Object deserialization is unsupported");
+        	result = deserialize(jsonElement.getAsJsonObject());
         }
 
         return result;
@@ -105,6 +114,12 @@ public class RecordDataDeserializer implements JsonDeserializer<RecordData> {
         for (JsonElement jsonElement : jsonArray) {
             result.add(deserialize(jsonElement));
         }
+
+        return result;
+    }
+    
+    private Object deserialize(JsonObject jsonObject) {
+    	Point result = new Point(jsonObject.get("latitude").getAsDouble(), jsonObject.get("longitude").getAsDouble());
 
         return result;
     }

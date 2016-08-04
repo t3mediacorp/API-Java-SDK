@@ -39,6 +39,7 @@ import java.util.Map;
  *      Document("document")                    Long
  *      Image("image")                          Long
  *      URL("url")                              String
+ *      Point("point")                          trackvia.client.model.Point
  *     }
  *
  * </pre>

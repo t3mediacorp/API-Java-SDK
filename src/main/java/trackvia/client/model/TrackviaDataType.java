@@ -21,7 +21,8 @@ public enum TrackviaDataType {
     Date("date"),
     Document("document"),
     Image("image"),
-    URL("url");
+    URL("url"),
+    Point("point");
 
     private static Map<String, TrackviaDataType> lookupTable = new HashMap<String, TrackviaDataType>();
 
