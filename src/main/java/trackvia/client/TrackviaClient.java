@@ -299,8 +299,8 @@ public class TrackviaClient {
     protected static final String USER_KEY_QUERY_PARAM = "user_key";
     protected static final String API_VERSION_HEADER = "api-version";
     
-    private CloseableHttpClient httpClient;
-    private HttpClientConnectionManager connectionManager;
+    protected CloseableHttpClient httpClient;
+    protected HttpClientConnectionManager connectionManager;
     protected String baseUriPath;
     protected String scheme = DEFAULT_SCHEME;
     protected String hostname;
