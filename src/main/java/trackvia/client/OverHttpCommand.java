@@ -44,6 +44,7 @@ public abstract class OverHttpCommand<T> {
         this.gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX")
                 .registerTypeAdapter(RecordData.class, new RecordDataDeserializer())
+		.serializeNulls()
                 .create();
     }
     
