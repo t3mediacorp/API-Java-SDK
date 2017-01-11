@@ -364,6 +364,7 @@ public class TrackviaClient {
                 .registerTypeAdapter(RecordData.class, new RecordDataDeserializer())
                 .registerTypeAdapter(RecordData.class, new RecordDataSerializer())
                 .addSerializationExclusionStrategy(new TrackviaSerializationExclusionStrategy())
+		.serializeNulls()
                 .create();
 
         OAuth2Token token = new OAuth2Token();
