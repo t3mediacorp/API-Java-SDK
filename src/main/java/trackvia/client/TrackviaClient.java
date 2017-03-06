@@ -315,7 +315,7 @@ public class TrackviaClient {
     /**
      * Creates a client, with which to access the Trackvia API.
      *
-     * Defaults to the HTTPS protocol scheme and port 80.  These can be
+     * Defaults to the HTTPS protocol scheme and port 443.  These can be
      * overridden using a different constructor.
      *
      * @see #create(String, String, String, int, String, String, String) to override scheme and port
@@ -383,7 +383,7 @@ public class TrackviaClient {
      * @param baseUriPath prefixed to every HTTP request, before API-specific path segments (e.g., /openapi)
      * @param scheme one of the supported protocol schemes (http or https)
      * @param hostname host of the service api endpoint
-     * @param port port of the service endpoint (default: 80)
+     * @param port port of the service endpoint (default: 443)
      * @param username name of an account user with access to targeted views and forms
      * @param password password of the account user
      * @param apiUserKey 3Scale user key, granted when registering using the Trackvia Developer Portal
