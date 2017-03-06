@@ -335,7 +335,7 @@ public class TrackviaClient {
     /**
      * Creates a client, with which to access the Trackvia API.
      *
-     * Defaults to the HTTPS protocol scheme and port 80.  These can be
+     * Defaults to the HTTPS protocol scheme and port 443.  These can be
      * overridden using a different constructor.
      *      
      * @see #create(String, String, int, String) to override scheme and port
