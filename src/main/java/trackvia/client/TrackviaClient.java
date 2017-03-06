@@ -92,7 +92,7 @@ import trackvia.client.model.View;
  *
  * <pre>
  * {@code
- *      TrackviaClient client = TrackviaClient.create("go.api.trackvia.com", "myuser", "mypassword");
+ *      TrackviaClient client = TrackviaClient.create("go.api.trackvia.com", "myuser", "mypassword", "userkey");
  * }
  * </pre>
  *
@@ -293,7 +293,7 @@ public class TrackviaClient {
 
     public static final String DEFAULT_BASE_URI_PATH = "/";
     public static final String DEFAULT_SCHEME = "https";
-    public static final int DEFAULT_PORT = 80;
+    public static final int DEFAULT_PORT = 443;
 
     protected static final String ACCESS_TOKEN_QUERY_PARAM = "access_token";
     protected static final String USER_KEY_QUERY_PARAM = "user_key";

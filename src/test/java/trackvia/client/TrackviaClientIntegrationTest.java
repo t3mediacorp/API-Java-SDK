@@ -1,17 +1,28 @@
 package trackvia.client;
 
-import trackvia.client.model.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TimeZone;
+import java.util.UUID;
+
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-
-import static trackvia.client.TestData.*;
+import trackvia.client.TestData.Integration;
+import trackvia.client.model.ApiError;
+import trackvia.client.model.App;
+import trackvia.client.model.Record;
+import trackvia.client.model.RecordData;
+import trackvia.client.model.RecordDataBatch;
+import trackvia.client.model.RecordSet;
+import trackvia.client.model.User;
+import trackvia.client.model.View;
 
 @RunWith(JUnit4.class)
 public class TrackviaClientIntegrationTest {
@@ -35,12 +46,14 @@ public class TrackviaClientIntegrationTest {
         }
     }
 
+    @Ignore
     @Test
     public void testAuthorized() throws Exception {
         // throws TrackviaApiException if access is not granted
         TrackviaClient client = getClient();
     }
 
+    @Ignore
     @Test
     public void testUnauthorized() throws Exception {
         try {
@@ -51,6 +64,7 @@ public class TrackviaClientIntegrationTest {
         }
     }
 
+    @Ignore
     @Test
     public void testGetApps() throws Exception {
         TrackviaClient client = getClient();
@@ -60,6 +74,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertFalse(apps.isEmpty());
     }
 
+    @Ignore
     @Test
     public void testGetViews() throws Exception {
         TrackviaClient client = getClient();
@@ -69,6 +84,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertFalse(views.isEmpty());
     }
 
+    @Ignore
     @Test
     public void testGetRecords() throws Exception {
         TrackviaClient client = getClient();
@@ -79,6 +95,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertTrue(rs.getData().size() > 0);
     }
 
+    @Ignore
     @Test
     public void testGetRecord() throws Exception {
         TrackviaClient client = getClient();
@@ -88,6 +105,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertNotNull(record);
     }
 
+    @Ignore
     @Test
     public void testFindRecords() throws Exception {
         TrackviaClient client = getClient();
@@ -98,6 +116,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertTrue(rs.getData().size() > 0);
     }
 
+    @Ignore
     @Test
     public void testGetUsers() throws Exception {
         TrackviaClient client = getClient();
@@ -107,6 +126,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertTrue(users.size() > 0);
     }
 
+    @Ignore
     @Test
     public void testCreateUser() throws Exception {
         final String email = String.format("tester-%d@we-love-testing.org", System.currentTimeMillis());
@@ -119,7 +139,8 @@ public class TrackviaClientIntegrationTest {
         Assert.assertNotNull(user);
     }
 
-    RecordData createOneTestRecord() throws Exception {
+    
+    private RecordData createOneTestRecord() throws Exception {
         RecordDataBatch batch = new RecordDataBatch();
         List<RecordData> records = new ArrayList<RecordData>();
 
@@ -137,6 +158,7 @@ public class TrackviaClientIntegrationTest {
         return rs.getData().get(0);
     }
 
+    @Ignore
     @Test
     public void testCreateRecordBatch() throws Exception {
         RecordDataBatch batch = new RecordDataBatch();
@@ -155,6 +177,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertTrue(rs.getData().size() > 0);
     }
 
+    @Ignore
     @Test
     public void testUpdateRecord() throws Exception {
         TrackviaClient client = getClient();
@@ -178,6 +201,7 @@ public class TrackviaClientIntegrationTest {
                 updatedData.get(Integration.COLUMN_FIRST_NAME));
     }
 
+
     private RecordDataBatch batchOfOne() {
         RecordDataBatch batch = new RecordDataBatch();
         List<RecordData> records = new ArrayList<RecordData>();
@@ -188,6 +212,8 @@ public class TrackviaClientIntegrationTest {
 
         return batch;
     }
+    
+    @Ignore
     @Test
     public void testDeleteRecord() throws Exception {
         TrackviaClient client = getClient();
@@ -205,6 +231,7 @@ public class TrackviaClientIntegrationTest {
         Assert.assertNull(record);
     }
 
+    @Ignore
     @Test
     public void testAddFile() throws Exception {
         TrackviaClient client = getClient();
@@ -227,6 +254,7 @@ public class TrackviaClientIntegrationTest {
         }
     }
 
+    @Ignore
     @Test
     public void testGetFile() throws Exception {
         TrackviaClient client = getClient();
@@ -237,6 +265,7 @@ public class TrackviaClientIntegrationTest {
         client.getFile(TEST_VIEW_ID, testRecord.getId(), Integration.COLUMN_FILE1, filePath);
     }
 
+    @Ignore
     @Test
     public void testDeleteFile() throws Exception {
         TrackviaClient client = getClient();
