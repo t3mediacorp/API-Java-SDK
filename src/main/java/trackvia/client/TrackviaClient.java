@@ -454,6 +454,9 @@ public class TrackviaClient {
                 .register(this.scheme, sslsf)
                 .build();
         this.connectionManager = new PoolingHttpClientConnectionManager(registry);
+        ((PoolingHttpClientConnectionManager)connectionManager).setDefaultMaxPerRoute(50);
+        ((PoolingHttpClientConnectionManager)connectionManager).setMaxTotal(250);
+        
         this.httpClient = HttpClients.custom()
                 .setConnectionManager(this.connectionManager)
                 .build();
